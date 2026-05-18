@@ -41,15 +41,14 @@ class UserService {
           'isActive': true,
         },
       );
-      // HTTP 200 hoặc 201 đều là tạo thành công
-      return response.statusCode == 200 || response.statusCode == 201;
+      return response.statusCode == 200;
     } catch (e) {
       print('Lỗi tạo user: $e');
       return false;
     }
   }
 
-  // 3. SỬA (CẬP NHẬT)
+  
   Future<bool> updateUser(
     int userId,
     String fullName,

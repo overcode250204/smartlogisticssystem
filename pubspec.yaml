@@ -38,6 +38,7 @@ dependencies:
   dotenv: ^4.2.0
   dart_frog: ^1.2.6
   dio: ^5.9.2
+  shared_preferences: ^2.5.5
 
 dev_dependencies:
   flutter_test:

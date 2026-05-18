@@ -1,5 +1,6 @@
 // File: lib/core/networking.dart
 import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiClient {
   late final Dio _dio;
@@ -7,7 +8,6 @@ class ApiClient {
   ApiClient() {
     _dio = Dio(
       BaseOptions(
-        // Gán trực tiếp chuỗi URL. Sẽ đảm bảo 100% không bị lỗi đường dẫn
         baseUrl: 'http://127.0.0.1:8080/api/',
         connectTimeout: const Duration(seconds: 5),
         receiveTimeout: const Duration(seconds: 3),
@@ -17,7 +17,16 @@ class ApiClient {
 
     _dio.interceptors.add(
       InterceptorsWrapper(
-        onRequest: (options, handler) {
+        onRequest: (options, handler) async {
+          final prefs = await SharedPreferences.getInstance();
+          final roleId = prefs.getInt('roleId');
+          final userId = prefs.getInt('userId');
+          if (roleId != null) {
+            options.headers['X-Role-Id'] = roleId; 
+          }
+          if (userId != null) {
+            options.headers['X-User-Id'] = userId; 
+          }
           return handler.next(options);
         },
       ),
