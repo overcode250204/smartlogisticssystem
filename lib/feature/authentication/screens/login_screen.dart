@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smartlogisticssystem/feature/authentication/auth_service/auth_service.dart';
+import 'package:smartlogisticssystem/feature/driver/driver_screens/driver_screen.dart';
 import 'package:smartlogisticssystem/feature/user/screens/user_screens.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -31,7 +35,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _errorMessage = '';
     });
 
-    Map<String, int>? login = await _authService.login(
+    Map<String, int>? loginResult = await _authService.login(
       _emailController.text.trim(),
       _passwordController.text.trim(),
     );
@@ -40,37 +44,78 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = false;
     });
 
-    if (login != null) {
-      int roleId = login['roleId']!;
-      int userId = login['userId']!;
+    if (loginResult != null) {
+      int roleId = loginResult['roleId']!;
+      int userId = loginResult['userId']!;
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('roleId', roleId);
       await prefs.setInt('userId', userId);
 
-      if (roleId == 1) {
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => UserListScreen(currentRoleId: roleId),
-            ),
-          );
-        }
-      } else if (roleId == 2) {
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const Scaffold(
-                body: Center(child: Text('Màn hình Quản lý Kho của Bảo')),
-              ),
-            ),
-          );
+      // KIỂM TRA THIẾT BỊ ĐANG CHẠY LÀ GÌ?
+      // kIsWeb là false (nghĩa là ko chạy trên trình duyệt) VÀ chạy trên Android hoặc iOS
+      bool isMobile = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+
+      if (roleId == 1 || roleId == 2) {
+        // ==========================================
+        // NHÓM QUẢN TRỊ (ADMIN = 1, THỦ KHO = 2)
+        // ==========================================
+        if (isMobile) {
+          setState(() {
+            _errorMessage =
+                'Tài khoản quản trị. Vui lòng đăng nhập trên máy tính Desktop!';
+          });
+          await _authService.logout(); // Xóa phiên đăng nhập sai thiết bị
+        } else {
+          // HỢP LỆ: Đang dùng Desktop
+          if (mounted) {
+            if (roleId == 1) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => UserListScreen(currentRoleId: roleId),
+                ),
+              );
+            } else {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const Scaffold(
+                    body: Center(child: Text('Màn hình Quản lý Kho của Bảo')),
+                  ),
+                ),
+              );
+            }
+          }
         }
       } else if (roleId == 3) {
-        setState(() {
-          _errorMessage = 'Tài xế vui lòng đăng nhập trên ứng dụng Mobile.';
-        });
+        // ==========================================
+        // NHÓM TÀI XẾ (DRIVER = 3)
+        // ==========================================
+        if (isMobile) {
+          // HỢP LỆ: Tài xế dùng App Mobile
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                // Điều hướng tạm vào trang này chờ Đức code tiếp phần GPS Tracking
+                builder: (context) => const Scaffold(
+                  body: Center(
+                    child: Text(
+                      'Màn hình Map Tracking GPS của Tài xế (Đức làm)',
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }
+        } else {
+          // BỊ CHẶN: Tài xế không được dùng máy tính Desktop
+          setState(() {
+            _errorMessage = 'Tài xế vui lòng đăng nhập trên ứng dụng Mobile.';
+          });
+          await _authService.logout();
+        }
       } else {
         setState(() {
           _errorMessage = 'Quyền truy cập không hợp lệ!';
@@ -85,6 +130,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    bool isMobile = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
     return Scaffold(
       backgroundColor: Colors.grey[200],
       body: Center(
@@ -176,6 +222,26 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                   ),
                 ),
+                if (isMobile) ...[
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const DriverRegisterScreen(),
+                        ),
+                      );
+                    },
+                    child: const Text(
+                      'Chưa có tài khoản? Đăng ký tài xế mới',
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

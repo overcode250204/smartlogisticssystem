@@ -1,6 +1,8 @@
 // File: lib/features/auth_nguyen/user_list_screen.dart
 import 'package:flutter/material.dart';
 import 'package:smartlogisticssystem/data/model/user_model.dart';
+import 'package:smartlogisticssystem/feature/authentication/auth_service/auth_service.dart';
+import 'package:smartlogisticssystem/feature/authentication/screens/login_screen.dart';
 import 'package:smartlogisticssystem/feature/user/user_service/user_service.dart';
 
 class UserListScreen extends StatefulWidget {
@@ -13,6 +15,7 @@ class UserListScreen extends StatefulWidget {
 
 class _UserListScreenState extends State<UserListScreen> {
   final UserService _userService = UserService();
+  final AuthService _authService = AuthService();
   List<UserModel> _users = [];
   bool _isLoading = true;
 
@@ -59,6 +62,19 @@ class _UserListScreenState extends State<UserListScreen> {
         backgroundColor: isError ? Colors.red : Colors.green,
       ),
     );
+  }
+
+  // Hàm Đăng xuất
+  Future<void> _logout() async {
+    await _authService.logout();
+
+    if (mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (route) => false,
+      );
+    }
   }
 
   // Xử lý XÓA
@@ -266,7 +282,17 @@ class _UserListScreenState extends State<UserListScreen> {
       appBar: AppBar(
         title: const Text('Quản lý Nhân sự'),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _fetchUsers),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _fetchUsers,
+            tooltip: 'Làm mới',
+          ),
+          // ĐÂY LÀ NÚT LOGOUT ĐÃ ĐƯỢC THÊM VÀO:
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _logout,
+            tooltip: 'Đăng xuất',
+          ),
         ],
       ),
       floatingActionButton: isAdmin
