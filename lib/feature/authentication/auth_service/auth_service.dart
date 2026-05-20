@@ -1,4 +1,6 @@
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smartlogisticssystem/core/networking.dart';
+import 'package:smartlogisticssystem/data/model/user_model.dart';
 
 class AuthService {
   final ApiClient _client = ApiClient();
@@ -25,6 +27,30 @@ class AuthService {
     } catch (e) {
       print('Fail to Login: $e');
       return null;
+    }
+  }
+
+  Future<void> logout() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+    } catch (e) {
+      print('Error logout $e');
+    }
+  }
+
+  Future<bool> registerDriver(UserModel userDTO) async {
+    try {
+      print(userDTO.toString());
+      final response = await _client.post(
+        '/auth/register-driver', // Đường dẫn API Spring Boot vừa tạo ở trên
+        data: userDTO.toJson(),
+      );
+      print(response);
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      print('Lỗi Đăng ký: $e');
+      return false;
     }
   }
 }
