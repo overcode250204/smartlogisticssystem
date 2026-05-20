@@ -1,14 +1,11 @@
 // File: lib/features/auth_nguyen/splash_screen.dart
-import 'dart:io' show Platform; // Thêm thư viện này để check hệ điều hành
-import 'package:flutter/foundation.dart'
-    show kIsWeb; // Thêm thư viện này để check Web
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:smartlogisticssystem/feature/authentication/screens/login_screen.dart';
 
 // THAY ĐỔI ĐƯỜNG DẪN IMPORT CHO ĐÚNG VỚI MÁY CỦA BẠN:
-import 'package:smartlogisticssystem/feature/authentication/screens/mobile_login_screen.dart';
-import 'package:smartlogisticssystem/feature/user/screens/user_screens.dart'; // Màn hình Login Mobile
+import 'package:smartlogisticssystem/feature/authentication/screens/login_screen.dart';
+import 'package:smartlogisticssystem/feature/driver/driver_screens/driver_screen.dart';
+import 'package:smartlogisticssystem/feature/user/screens/user_screens.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -25,7 +22,6 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkLoginStatus() async {
-    // Chờ 1.5 giây cho người dùng nhìn thấy Logo App
     await Future.delayed(const Duration(milliseconds: 1500));
 
     final prefs = await SharedPreferences.getInstance();
@@ -33,7 +29,6 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (!mounted) return;
 
-    // TRƯỜNG HỢP 1: ĐÃ ĐĂNG NHẬP (AUTO-LOGIN)
     if (roleId != null) {
       if (roleId == 1) {
         Navigator.pushReplacement(
@@ -52,37 +47,19 @@ class _SplashScreenState extends State<SplashScreen> {
           ),
         );
       } else if (roleId == 3) {
+        // ĐÃ SỬA: Đưa vào màn hình DriverScreen có nút Logout
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-            builder: (context) => const Scaffold(
-              body: Center(child: Text('Màn hình Map Tracking GPS của Tài xế')),
-            ),
-          ),
+          MaterialPageRoute(builder: (context) => const DriverScreen()),
         );
       } else {
-        _routeToLogin(); // Quyền rác -> Trục xuất ra Login
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+        );
       }
-    }
-    // TRƯỜNG HỢP 2: CHƯA ĐĂNG NHẬP -> CHỌN MÀN HÌNH LOGIN THEO THIẾT BỊ
-    else {
-      _routeToLogin();
-    }
-  }
-
-  // HÀM PHÂN LUỒNG MÀN HÌNH LOGIN (DESKTOP HAY MOBILE)
-  void _routeToLogin() {
-    // Kiểm tra xem có phải đang chạy trên điện thoại không?
-    bool isMobile = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
-
-    if (isMobile) {
-      // 1. NẾU LÀ ĐIỆN THOẠI -> Mở màn hình Login có nút Đăng ký OCR
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const MobileLoginScreen()),
-      );
     } else {
-      // 2. NẾU LÀ MÁY TÍNH/WEB -> Mở màn hình Login tiêu chuẩn của Admin
+      // ĐÃ SỬA: Chỉ cần gọi LoginScreen, bên trong file đó sẽ tự check Mobile/Desktop
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const LoginScreen()),

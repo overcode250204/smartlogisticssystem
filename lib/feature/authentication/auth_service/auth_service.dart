@@ -39,22 +39,14 @@ class AuthService {
     }
   }
 
-  Future<bool> registerDriver(
-    String fullName,
-    String idCard,
-    String phone,
-    String password,
-  ) async {
+  Future<bool> registerDriver(UserModel userDTO) async {
     try {
+      print(userDTO.toString());
       final response = await _client.post(
         '/auth/register-driver', // Đường dẫn API Spring Boot vừa tạo ở trên
-        data: {
-          'fullName': fullName,
-          'phone': phone,
-          'idCard': idCard, // Nếu DB bạn có lưu CCCD
-          'password': password,
-        },
+        data: userDTO.toJson(),
       );
+      print(response);
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
       print('Lỗi Đăng ký: $e');

@@ -1,4 +1,5 @@
 // File: lib/features/auth_nguyen/user_list_screen.dart
+import 'dart:async'; // Bắt buộc phải có để dùng Timer (Debounce)
 import 'package:flutter/material.dart';
 import 'package:smartlogisticssystem/data/model/user_model.dart';
 import 'package:smartlogisticssystem/feature/authentication/auth_service/auth_service.dart';
@@ -16,27 +17,35 @@ class UserListScreen extends StatefulWidget {
 class _UserListScreenState extends State<UserListScreen> {
   final UserService _userService = UserService();
   final AuthService _authService = AuthService();
-  List<UserModel> _users = [];
+
+  List<UserModel> _users = []; // Danh sách hiển thị trên bảng
   bool _isLoading = true;
 
-  // Key để quản lý form validate
-  final _formKey = GlobalKey<FormState>();
+  // --- QUẢN LÝ TÌM KIẾM VÀ LỌC ---
+  final TextEditingController _searchController = TextEditingController();
+  int? _filterRoleId;
+  bool? _filterIsActive;
+  Timer? _debounce;
 
-  // Controllers cho Form Thêm/Sửa
+  // --- QUẢN LÝ FORM THÊM / SỬA ---
+  final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  int _selectedRoleId = 3; // 1: Admin, 2: Thủ kho, 3: Tài xế
+  int _selectedRoleId = 3;
+  bool _isActive = true; // Quản lý trạng thái Hoạt động/Đã nghỉ trong Form
 
   @override
   void initState() {
     super.initState();
-    _fetchUsers();
+    _performSearch(); // Gọi API tìm kiếm lần đầu tiên (Lấy tất cả)
   }
 
   @override
   void dispose() {
+    _debounce?.cancel(); // Hủy Timer khi thoát màn hình
+    _searchController.dispose();
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
@@ -44,17 +53,31 @@ class _UserListScreenState extends State<UserListScreen> {
     super.dispose();
   }
 
-  // Lấy dữ liệu từ server
-  Future<void> _fetchUsers() async {
+  // Thuật toán Debounce: Chờ người dùng ngừng thao tác 0.5s rồi mới gọi API
+  void _onSearchChanged() {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      _performSearch();
+    });
+  }
+
+  // Gọi API Tìm kiếm có 3 điều kiện xuống Backend
+  Future<void> _performSearch() async {
     setState(() => _isLoading = true);
-    final users = await _userService.getAllUsers();
+
+    // Đẩy cả 3 biến xuống Backend
+    final users = await _userService.searchUsers(
+      keyword: _searchController.text.trim(),
+      roleId: _filterRoleId,
+      isActive: _filterIsActive,
+    );
+
     setState(() {
       _users = users;
       _isLoading = false;
     });
   }
 
-  // Hiển thị thông báo góc dưới màn hình
   void _showMessage(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -64,10 +87,8 @@ class _UserListScreenState extends State<UserListScreen> {
     );
   }
 
-  // Hàm Đăng xuất
   Future<void> _logout() async {
     await _authService.logout();
-
     if (mounted) {
       Navigator.pushAndRemoveUntil(
         context,
@@ -77,14 +98,13 @@ class _UserListScreenState extends State<UserListScreen> {
     }
   }
 
-  // Xử lý XÓA
   Future<void> _confirmDelete(int userId) async {
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Xác nhận xóa'),
         content: const Text(
-          'Bạn có chắc chắn muốn cho nhân sự này nghỉ việc không?',
+          'Bạn có chắc chắn muốn xóa vĩnh viễn nhân sự này không?',
         ),
         actions: [
           TextButton(
@@ -105,7 +125,7 @@ class _UserListScreenState extends State<UserListScreen> {
       final success = await _userService.deleteUser(userId);
       if (success) {
         _showMessage('Xóa nhân sự thành công!');
-        _fetchUsers();
+        _performSearch(); // Refresh lại bảng
       } else {
         _showMessage('Xóa thất bại!', isError: true);
         setState(() => _isLoading = false);
@@ -113,162 +133,177 @@ class _UserListScreenState extends State<UserListScreen> {
     }
   }
 
-  // Hiển thị Form THÊM / SỬA với tính năng VALIDATE
+  // Hiển thị Form THÊM / SỬA
   void _showUserDialog({UserModel? userToEdit}) {
-    if (userToEdit != null) {
-      _nameController.text = userToEdit.fullName;
-      _emailController.text = userToEdit.email;
-      _phoneController.text = userToEdit.phone ?? '';
-      _passwordController.clear();
-      _selectedRoleId = userToEdit.roleName == 'Admin'
-          ? 1
-          : (userToEdit.roleName == 'WarehouseManager' ? 2 : 3);
-    } else {
-      _nameController.clear();
-      _emailController.clear();
-      _phoneController.clear();
-      _passwordController.clear();
-      _selectedRoleId = 3;
-    }
-
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) {
-        return AlertDialog(
-          title: Text(
-            userToEdit == null ? 'Thêm Nhân Sự Mới' : 'Sửa Thông Tin',
-          ),
-          content: SingleChildScrollView(
-            child: Form(
-              key: _formKey, // Bắt buộc truyền key vào đây
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(labelText: 'Họ tên *'),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty)
-                        return 'Vui lòng nhập họ tên';
-                      if (value.trim().length < 5)
-                        return 'Họ tên phải từ 5 ký tự';
-                      return null;
-                    },
-                  ),
-                  TextFormField(
-                    controller: _emailController,
-                    decoration: const InputDecoration(labelText: 'Email *'),
-                    enabled: userToEdit == null,
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty)
-                        return 'Vui lòng nhập email';
-                      final emailRegex = RegExp(
-                        r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                      );
-                      if (!emailRegex.hasMatch(value.trim()))
-                        return 'Email không đúng định dạng';
-                      return null;
-                    },
-                  ),
-                  TextFormField(
-                    controller: _phoneController,
-                    decoration: const InputDecoration(
-                      labelText: 'Số điện thoại *',
-                    ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty)
-                        return 'Vui lòng nhập số điện thoại';
-                      final phoneRegex = RegExp(r'^(0)[0-9]{9}$');
-                      if (!phoneRegex.hasMatch(value.trim()))
-                        return 'SDT gồm 10 số và bắt đầu bằng 0';
-                      return null;
-                    },
-                  ),
-                  if (userToEdit == null)
-                    TextFormField(
-                      controller: _passwordController,
-                      decoration: const InputDecoration(
-                        labelText: 'Mật khẩu *',
-                      ),
-                      obscureText: true,
-                      validator: (value) {
-                        if (value == null || value.isEmpty)
-                          return 'Vui lòng nhập mật khẩu';
-                        if (value.length < 6) return 'Mật khẩu phải từ 6 ký tự';
-                        return null;
-                      },
-                    ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<int>(
-                    value: _selectedRoleId,
-                    items: const [
-                      DropdownMenuItem(value: 1, child: Text('Admin')),
-                      DropdownMenuItem(
-                        value: 2,
-                        child: Text('WarehouseManager'),
-                      ),
-                      DropdownMenuItem(value: 3, child: Text('Driver')),
-                    ],
-                    onChanged: (val) => setState(() => _selectedRoleId = val!),
-                    decoration: const InputDecoration(
-                      labelText: 'Chức vụ *',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ],
+        // Nạp dữ liệu ban đầu
+        if (userToEdit != null) {
+          _nameController.text = userToEdit.fullName;
+          _emailController.text = userToEdit.email ?? '';
+          _phoneController.text = userToEdit.phone ?? '';
+          _passwordController.clear();
+          _isActive = userToEdit.isActive;
+          _selectedRoleId = userToEdit.roleName == 'Admin'
+              ? 1
+              : (userToEdit.roleName == 'WarehouseManager' ? 2 : 3);
+        } else {
+          _nameController.clear();
+          _emailController.clear();
+          _phoneController.clear();
+          _passwordController.clear();
+          _isActive = true;
+          _selectedRoleId = 3;
+        }
+
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: Text(
+                userToEdit == null ? 'Thêm Nhân Sự Mới' : 'Sửa Thông Tin',
               ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Hủy'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                // KIỂM TRA FORM: Nếu hợp lệ mới chạy API
-                if (_formKey.currentState!.validate()) {
-                  Navigator.pop(context);
-                  setState(() => _isLoading = true);
+              content: SingleChildScrollView(
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: _nameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Họ tên *',
+                        ),
+                        validator: (v) => (v == null || v.trim().length < 5)
+                            ? 'Họ tên phải từ 5 ký tự'
+                            : null,
+                      ),
+                      TextFormField(
+                        controller: _emailController,
+                        decoration: const InputDecoration(labelText: 'Email *'),
+                        enabled:
+                            userToEdit ==
+                            null, // Không cho sửa email nếu đã tồn tại
+                        validator: (v) => (v == null || !v.contains('@'))
+                            ? 'Email không hợp lệ'
+                            : null,
+                      ),
+                      TextFormField(
+                        controller: _phoneController,
+                        decoration: const InputDecoration(
+                          labelText: 'Số điện thoại *',
+                        ),
+                        validator: (v) =>
+                            (v == null || !RegExp(r'^(0)[0-9]{9}$').hasMatch(v))
+                            ? 'SDT gồm 10 số, bắt đầu bằng 0'
+                            : null,
+                      ),
+                      if (userToEdit == null)
+                        TextFormField(
+                          controller: _passwordController,
+                          decoration: const InputDecoration(
+                            labelText: 'Mật khẩu *',
+                          ),
+                          obscureText: true,
+                          validator: (v) => (v == null || v.length < 6)
+                              ? 'Mật khẩu phải từ 6 ký tự'
+                              : null,
+                        ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<int>(
+                        value: _selectedRoleId,
+                        items: const [
+                          DropdownMenuItem(value: 1, child: Text('Admin')),
+                          DropdownMenuItem(
+                            value: 2,
+                            child: Text('WarehouseManager'),
+                          ),
+                          DropdownMenuItem(value: 3, child: Text('Driver')),
+                        ],
+                        onChanged: (val) =>
+                            setStateDialog(() => _selectedRoleId = val!),
+                        decoration: const InputDecoration(
+                          labelText: 'Chức vụ *',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
 
-                  bool success;
-                  if (userToEdit == null) {
-                    success = await _userService.createUser(
-                      _nameController.text.trim(),
-                      _emailController.text.trim(),
-                      _phoneController.text.trim(),
-                      _passwordController.text.trim(),
-                      _selectedRoleId,
-                    );
-                  } else {
-                    success = await _userService.updateUser(
-                      userToEdit.userId,
-                      _nameController.text.trim(),
-                      _phoneController.text.trim(),
-                      _selectedRoleId,
-                    );
-                  }
+                      // Hiển thị công tắc trạng thái nếu đang Sửa
+                      if (userToEdit != null) ...[
+                        const SizedBox(height: 16),
+                        SwitchListTile(
+                          title: const Text(
+                            'Trạng thái hoạt động',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(
+                            _isActive
+                                ? 'Đang làm việc / Đã duyệt'
+                                : 'Đã nghỉ / Chờ duyệt',
+                          ),
+                          value: _isActive,
+                          activeColor: Colors.green,
+                          onChanged: (bool value) {
+                            setStateDialog(() => _isActive = value);
+                          },
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Hủy'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (_formKey.currentState!.validate()) {
+                      Navigator.pop(context);
+                      setState(() => _isLoading = true);
 
-                  if (success) {
-                    _showMessage(
-                      userToEdit == null
-                          ? 'Thêm thành công!'
-                          : 'Cập nhật thành công!',
-                    );
-                    _fetchUsers();
-                  } else {
-                    _showMessage(
-                      'Có lỗi xảy ra, vui lòng thử lại!',
-                      isError: true,
-                    );
-                    setState(() => _isLoading = false);
-                  }
-                }
-              },
-              child: const Text('Lưu'),
-            ),
-          ],
+                      bool success;
+                      if (userToEdit == null) {
+                        success = await _userService.createUser(
+                          _nameController.text.trim(),
+                          _emailController.text.trim(),
+                          _phoneController.text.trim(),
+                          _passwordController.text.trim(),
+                          _selectedRoleId,
+                        );
+                      } else {
+                        success = await _userService.updateUser(
+                          userToEdit.userId!,
+                          _nameController.text.trim(),
+                          _phoneController.text.trim(),
+                          _selectedRoleId,
+                          _isActive, // Đảm bảo hàm updateUser của bạn nhận biến này
+                        );
+                      }
+
+                      if (success) {
+                        _showMessage(
+                          userToEdit == null
+                              ? 'Thêm thành công!'
+                              : 'Cập nhật thành công!',
+                        );
+                        _performSearch(); // Lấy lại dữ liệu
+                      } else {
+                        _showMessage(
+                          'Có lỗi xảy ra, vui lòng thử lại!',
+                          isError: true,
+                        );
+                        setState(() => _isLoading = false);
+                      }
+                    }
+                  },
+                  child: const Text('Lưu'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -284,10 +319,9 @@ class _UserListScreenState extends State<UserListScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _fetchUsers,
+            onPressed: _performSearch,
             tooltip: 'Làm mới',
           ),
-          // ĐÂY LÀ NÚT LOGOUT ĐÃ ĐƯỢC THÊM VÀO:
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: _logout,
@@ -302,101 +336,229 @@ class _UserListScreenState extends State<UserListScreen> {
               child: const Icon(Icons.add),
             )
           : null,
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: SizedBox(
-                width: double.infinity,
-                child: DataTable(
-                  headingRowColor: MaterialStateProperty.all(
-                    Colors.blue.shade100,
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            // =====================================
+            // KHU VỰC TÌM KIẾM VÀ LỌC (3 ĐIỀU KIỆN)
+            // =====================================
+            Column(
+              children: [
+                // 1. Ô Tìm kiếm Text
+                TextField(
+                  controller: _searchController,
+                  onChanged: (value) =>
+                      _onSearchChanged(), // Gọi hàm debounce khi gõ chữ
+                  decoration: InputDecoration(
+                    hintText: 'Tìm kiếm theo tên, email hoặc SĐT...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _searchController.clear();
+                              _onSearchChanged(); // Gọi lại tìm kiếm khi xóa trắng
+                            },
+                          )
+                        : null,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
                   ),
-                  columns: [
-                    const DataColumn(
-                      label: Text(
-                        'ID',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    const DataColumn(
-                      label: Text(
-                        'Họ Tên',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    const DataColumn(
-                      label: Text(
-                        'Email',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    const DataColumn(
-                      label: Text(
-                        'Chức vụ',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    const DataColumn(
-                      label: Text(
-                        'Trạng thái',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    if (isAdmin)
-                      const DataColumn(
-                        label: Text(
-                          'Hành động',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                  ],
-                  rows: _users.map((user) {
-                    return DataRow(
-                      cells: [
-                        DataCell(Text(user.userId.toString())),
-                        DataCell(Text(user.fullName)),
-                        DataCell(Text(user.email)),
-                        DataCell(Text(user.roleName)),
-                        DataCell(
-                          Text(
-                            user.isActive ? 'Đang làm' : 'Đã nghỉ',
-                            style: TextStyle(
-                              color: user.isActive ? Colors.green : Colors.red,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        if (isAdmin)
-                          DataCell(
-                            Row(
-                              children: [
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.edit,
-                                    color: Colors.blue,
-                                  ),
-                                  onPressed: () =>
-                                      _showUserDialog(userToEdit: user),
-                                  tooltip: 'Sửa thông tin',
-                                ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.delete,
-                                    color: Colors.red,
-                                  ),
-                                  onPressed: () => _confirmDelete(user.userId),
-                                  tooltip: 'Cho nghỉ việc',
-                                ),
-                              ],
-                            ),
-                          ),
-                      ],
-                    );
-                  }).toList(),
                 ),
-              ),
+                const SizedBox(height: 12),
+
+                // 2. Hai ô Dropdown Lọc
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<int?>(
+                        value: _filterRoleId,
+                        decoration: const InputDecoration(
+                          labelText: 'Lọc Chức vụ',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: null,
+                            child: Text('Tất cả chức vụ'),
+                          ),
+                          DropdownMenuItem(value: 1, child: Text('Admin')),
+                          DropdownMenuItem(
+                            value: 2,
+                            child: Text('WarehouseManager'),
+                          ),
+                          DropdownMenuItem(value: 3, child: Text('Driver')),
+                        ],
+                        onChanged: (val) {
+                          setState(() => _filterRoleId = val);
+                          _onSearchChanged(); // Lọc lại ngay khi đổi dropdown
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<bool?>(
+                        value: _filterIsActive,
+                        decoration: const InputDecoration(
+                          labelText: 'Lọc Trạng thái',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: null,
+                            child: Text('Tất cả trạng thái'),
+                          ),
+                          DropdownMenuItem(
+                            value: true,
+                            child: Text('Đang làm việc / Đã duyệt'),
+                          ),
+                          DropdownMenuItem(
+                            value: false,
+                            child: Text('Đã nghỉ / Chờ duyệt'),
+                          ),
+                        ],
+                        onChanged: (val) {
+                          setState(() => _filterIsActive = val);
+                          _onSearchChanged(); // Lọc lại ngay khi đổi dropdown
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
+            const SizedBox(height: 16),
+
+            // =====================================
+            // BẢNG HIỂN THỊ DỮ LIỆU
+            // =====================================
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : SingleChildScrollView(
+                      scrollDirection: Axis.vertical,
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: DataTable(
+                          headingRowColor: MaterialStateProperty.all(
+                            Colors.blue.shade100,
+                          ),
+                          columns: [
+                            const DataColumn(
+                              label: Text(
+                                'ID',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            const DataColumn(
+                              label: Text(
+                                'Họ Tên',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            const DataColumn(
+                              label: Text(
+                                'Email',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            const DataColumn(
+                              label: Text(
+                                'Chức vụ',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            const DataColumn(
+                              label: Text(
+                                'Trạng thái',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            if (isAdmin)
+                              const DataColumn(
+                                label: Text(
+                                  'Hành động',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                          ],
+                          rows: _users.map((user) {
+                            return DataRow(
+                              cells: [
+                                DataCell(Text(user.userId.toString())),
+                                DataCell(Text(user.fullName)),
+                                DataCell(Text(user.email ?? '')),
+                                DataCell(Text(user.roleName)),
+                                DataCell(
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: user.isActive
+                                          ? Colors.green.withOpacity(0.1)
+                                          : Colors.red.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: Text(
+                                      user.isActive ? 'Đang làm' : 'Chưa duyệt',
+                                      style: TextStyle(
+                                        color: user.isActive
+                                            ? Colors.green
+                                            : Colors.red,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                if (isAdmin)
+                                  DataCell(
+                                    Row(
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.edit,
+                                            color: Colors.blue,
+                                          ),
+                                          onPressed: () =>
+                                              _showUserDialog(userToEdit: user),
+                                          tooltip: 'Sửa / Duyệt',
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.delete,
+                                            color: Colors.red,
+                                          ),
+                                          onPressed: () =>
+                                              _confirmDelete(user.userId!),
+                                          tooltip: 'Xóa vĩnh viễn',
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

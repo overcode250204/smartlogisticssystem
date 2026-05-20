@@ -48,17 +48,22 @@ class UserService {
     }
   }
 
-  
   Future<bool> updateUser(
     int userId,
     String fullName,
     String phone,
     int roleId,
+    bool isActive,
   ) async {
     try {
       final response = await _client.put(
         '/users/$userId',
-        data: {'fullName': fullName, 'phone': phone, 'roleId': roleId},
+        data: {
+          'fullName': fullName,
+          'phone': phone,
+          'roleId': roleId,
+          'isActive': isActive,
+        },
       );
       return response.statusCode == 200;
     } catch (e) {
@@ -75,6 +80,36 @@ class UserService {
     } catch (e) {
       print('Lỗi xóa user: $e');
       return false;
+    }
+  }
+
+  // Tìm kiếm với 3 điều kiện (Các tham số được bọc trong {} để có thể truyền hoặc không truyền)
+  Future<List<UserModel>> searchUsers({
+    String? keyword,
+    int? roleId,
+    bool? isActive,
+  }) async {
+    try {
+      // Chỉ đưa vào queryParameters những biến có dữ liệu
+      Map<String, dynamic> queryParams = {};
+      if (keyword != null && keyword.trim().isNotEmpty)
+        queryParams['keyword'] = keyword.trim();
+      if (roleId != null) queryParams['roleId'] = roleId;
+      if (isActive != null) queryParams['isActive'] = isActive;
+
+      final response = await _client.get(
+        '/users/search',
+        queryParameters: queryParams,
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data['data'];
+        return data.map((json) => UserModel.fromJson(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      print('Lỗi tìm kiếm users: $e');
+      return [];
     }
   }
 }

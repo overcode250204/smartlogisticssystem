@@ -26,7 +26,7 @@ class ApiClient {
       print('clientAndroidIOS');
       // BẠN HÃY THAY 192.168.1.15 BẰNG ĐỊA CHỈ IP WIFI CỦA MÁY TÍNH BẠN
       // Dùng IP Wi-Fi sẽ chạy được cho cả Điện thoại thật (cắm cáp) và Máy ảo
-      return 'http://10.0.2.2:8080/api/';
+      return 'http://192.168.1.190:8080/api/';
     }
     print('DefaultDevice');
     // Mặc định an toàn
@@ -38,7 +38,7 @@ class ApiClient {
       BaseOptions(
         // GỌI HÀM VỪA VIẾT VÀO ĐÂY
         baseUrl: _getDynamicBaseUrl(),
-        connectTimeout: const Duration(seconds: 5),
+        connectTimeout: const Duration(seconds: 15),
         receiveTimeout: const Duration(seconds: 3),
         headers: {'Content-Type': 'application/json'},
       ),

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smartlogisticssystem/feature/authentication/auth_service/auth_service.dart';
+import 'package:smartlogisticssystem/feature/driver/driver_screens/driver_register_screen.dart';
 import 'package:smartlogisticssystem/feature/driver/driver_screens/driver_screen.dart';
 import 'package:smartlogisticssystem/feature/user/screens/user_screens.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -89,28 +90,16 @@ class _LoginScreenState extends State<LoginScreen> {
           }
         }
       } else if (roleId == 3) {
-        // ==========================================
-        // NHÓM TÀI XẾ (DRIVER = 3)
-        // ==========================================
         if (isMobile) {
-          // HỢP LỆ: Tài xế dùng App Mobile
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                // Điều hướng tạm vào trang này chờ Đức code tiếp phần GPS Tracking
-                builder: (context) => const Scaffold(
-                  body: Center(
-                    child: Text(
-                      'Màn hình Map Tracking GPS của Tài xế (Đức làm)',
-                    ),
-                  ),
-                ),
-              ),
-            );
+          if (isMobile) {
+            if (mounted) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const DriverScreen()),
+              );
+            }
           }
         } else {
-          // BỊ CHẶN: Tài xế không được dùng máy tính Desktop
           setState(() {
             _errorMessage = 'Tài xế vui lòng đăng nhập trên ứng dụng Mobile.';
           });
