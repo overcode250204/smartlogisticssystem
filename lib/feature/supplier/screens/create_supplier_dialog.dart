@@ -163,7 +163,7 @@ class _CreateSupplierDialogState extends State<CreateSupplierDialog> {
                       label: Text(_isSubmitting ? 'Đang lưu...' : 'Tạo'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
-                        foregroundColor: AppColors.textPrimary,
+                        foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 18,
                           vertical: 14,

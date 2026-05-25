@@ -341,7 +341,7 @@ class _ImportPageState extends State<ImportPage> {
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
-                      foregroundColor: AppColors.textPrimary,
+                      foregroundColor: Colors.white,
                     ),
                   ),
                 ],
@@ -363,7 +363,9 @@ class _ImportPageState extends State<ImportPage> {
                     DataColumn(label: Text('Ngày nhập')),
                     DataColumn(label: Text('Trạng thái')),
                   ],
-                  rows: _batches
+                  rows: (_batches.toList()
+                        ..sort((a, b) => b.importDate.compareTo(a.importDate)))
+                      .take(5)
                       .map(
                         (batch) => DataRow(
                           cells: [
@@ -429,7 +431,7 @@ class _ImportErrorState extends StatelessWidget {
               label: const Text('Thử lại'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
-                foregroundColor: AppColors.textPrimary,
+                foregroundColor: Colors.white,
               ),
             ),
           ],

@@ -125,7 +125,7 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
                     label: const Text('Thử lại'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
-                      foregroundColor: AppColors.textPrimary,
+                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 24,
                         vertical: 12,
@@ -241,7 +241,7 @@ class _EmptyInventoryState extends StatelessWidget {
                       label: const Text('Tạo sản phẩm'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
-                        foregroundColor: AppColors.textPrimary,
+                        foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 20,
                           vertical: 14,
@@ -256,7 +256,7 @@ class _EmptyInventoryState extends StatelessWidget {
                       icon: const Icon(Icons.add_box_outlined),
                       label: const Text('Tạo lô hàng'),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.textPrimary,
+                        foregroundColor: Colors.white,
                         side: const BorderSide(color: AppColors.border),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 20,
@@ -448,7 +448,7 @@ class _ProductsTab extends StatelessWidget {
                 label: const Text('Thêm sản phẩm'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.textPrimary,
+                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 18,
                     vertical: 18,
@@ -604,7 +604,15 @@ class _BottomGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lowBatches = data.batches.take(3).toList();
+    final now = DateTime.now();
+    final fifteenDaysFromNow = now.add(const Duration(days: 15));
+
+    final upcomingExpiringBatches = data.batches.where((b) {
+      return b.expirationDate.isBefore(fifteenDaysFromNow);
+    }).toList()
+      ..sort((a, b) => a.expirationDate.compareTo(b.expirationDate));
+
+    final lowBatches = upcomingExpiringBatches.take(3).toList();
     final transactions = data.transactions.take(3).toList();
 
     return LayoutBuilder(
@@ -699,8 +707,8 @@ class _PageButton extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          color: AppColors.textPrimary,
+        style: TextStyle(
+          color: active ? Colors.white : AppColors.textPrimary,
           fontWeight: FontWeight.w800,
         ),
       ),

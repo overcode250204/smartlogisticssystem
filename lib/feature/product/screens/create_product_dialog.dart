@@ -271,7 +271,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                             ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
-                              foregroundColor: AppColors.textPrimary,
+                              foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 18,
                                 vertical: 14,

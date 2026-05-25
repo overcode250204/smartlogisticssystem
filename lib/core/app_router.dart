@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:smartlogisticssystem/feature/authentication/screens/login_screen.dart';
 import 'package:smartlogisticssystem/feature/inventory/screens/dashboard_page.dart';
 import 'package:smartlogisticssystem/feature/inventory/screens/export_page.dart';
 import 'package:smartlogisticssystem/feature/inventory/screens/import_page.dart';
@@ -8,8 +9,13 @@ import 'package:smartlogisticssystem/feature/supplier/screens/suppliers_page.dar
 import 'package:smartlogisticssystem/widgets/app_shell.dart';
 
 final appRouter = GoRouter(
-  initialLocation: '/inventory',
+  initialLocation: '/login',
   routes: [
+    GoRoute(
+      path: '/login',
+      pageBuilder: (context, state) =>
+          const NoTransitionPage(child: LoginScreen()),
+    ),
     ShellRoute(
       builder: (context, state, child) {
         return AppShell(

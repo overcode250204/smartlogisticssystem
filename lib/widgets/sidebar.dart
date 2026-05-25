@@ -134,11 +134,11 @@ class _SidebarTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final foreground = isActive ? AppColors.primary : AppColors.textSecondary;
+    final foreground = isActive ? Colors.white : AppColors.textSecondary;
 
     return Material(
       color: isActive
-          ? AppColors.primary.withValues(alpha: 0.08)
+          ? AppColors.primary
           : Colors.transparent,
       borderRadius: BorderRadius.circular(8),
       child: InkWell(

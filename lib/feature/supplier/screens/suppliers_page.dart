@@ -146,7 +146,7 @@ class _SuppliersPageState extends State<SuppliersPage> {
                   label: const Text('Thêm nhà cung cấp'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
-                    foregroundColor: AppColors.textPrimary,
+                    foregroundColor: Colors.white,
                   ),
                 ),
               ],
@@ -408,7 +408,7 @@ class _SupplierDialogState extends State<_SupplierDialog> {
           onPressed: _isSubmitting ? null : _submit,
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primary,
-            foregroundColor: AppColors.textPrimary,
+            foregroundColor: Colors.white,
           ),
           child: _isSubmitting
               ? const SizedBox(

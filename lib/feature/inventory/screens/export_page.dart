@@ -349,7 +349,7 @@ class _ExportPageState extends State<ExportPage> {
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.danger,
-                      foregroundColor: AppColors.textPrimary,
+                      foregroundColor: Colors.white,
                     ),
                   ),
                 ],
@@ -371,8 +371,9 @@ class _ExportPageState extends State<ExportPage> {
                     DataColumn(label: Text('Ngày')),
                     DataColumn(label: Text('Ghi chú')),
                   ],
-                  rows: _transactions
-                      .where((item) => item.type == 'EXPORT')
+                  rows: (_transactions.where((item) => item.type == 'EXPORT').toList()
+                        ..sort((a, b) => b.createdAt.compareTo(a.createdAt)))
+                      .take(5)
                       .map(
                         (item) => DataRow(
                           cells: [
@@ -457,7 +458,7 @@ class _ExportErrorState extends StatelessWidget {
               label: const Text('Thử lại'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
-                foregroundColor: AppColors.textPrimary,
+                foregroundColor: Colors.white,
               ),
             ),
           ],
