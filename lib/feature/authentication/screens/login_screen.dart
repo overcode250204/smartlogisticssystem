@@ -1,11 +1,11 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smartlogisticssystem/feature/authentication/auth_service/auth_service.dart';
 import 'package:smartlogisticssystem/feature/driver/driver_screens/driver_register_screen.dart';
 import 'package:smartlogisticssystem/feature/driver/driver_screens/driver_screen.dart';
-import 'package:smartlogisticssystem/feature/user/screens/user_screens.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class LoginScreen extends StatefulWidget {
@@ -57,7 +57,7 @@ class _LoginScreenState extends State<LoginScreen> {
       // kIsWeb là false (nghĩa là ko chạy trên trình duyệt) VÀ chạy trên Android hoặc iOS
       bool isMobile = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
 
-      if (roleId == 1 || roleId == 2) {
+      if (roleId == 2 || roleId == 1) {
         // ==========================================
         // NHÓM QUẢN TRỊ (ADMIN = 1, THỦ KHO = 2)
         // ==========================================
@@ -70,23 +70,7 @@ class _LoginScreenState extends State<LoginScreen> {
         } else {
           // HỢP LỆ: Đang dùng Desktop
           if (mounted) {
-            if (roleId == 1) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => UserListScreen(currentRoleId: roleId),
-                ),
-              );
-            } else {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const Scaffold(
-                    body: Center(child: Text('Màn hình Quản lý Kho của Bảo')),
-                  ),
-                ),
-              );
-            }
+            context.go('/inventory');
           }
         }
       } else if (roleId == 3) {
@@ -130,7 +114,7 @@ class _LoginScreenState extends State<LoginScreen> {
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10),
             ],
           ),
           // 2. BỌC COLUMN TRONG FORM

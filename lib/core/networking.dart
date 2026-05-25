@@ -24,13 +24,12 @@ class ApiClient {
     // 3. Nếu chạy trên Điện thoại (Android, iOS)
     if (Platform.isAndroid || Platform.isIOS) {
       print('clientAndroidIOS');
-      // BẠN HÃY THAY 192.168.1.15 BẰNG ĐỊA CHỈ IP WIFI CỦA MÁY TÍNH BẠN
-      // Dùng IP Wi-Fi sẽ chạy được cho cả Điện thoại thật (cắm cáp) và Máy ảo
-      return 'http://192.168.1.190:8080/api/';
+      // Dùng 10.0.2.2 cho Android Emulator để kết nối tới localhost của máy tính
+      return 'http://10.0.2.2:8080/api/';
     }
     print('DefaultDevice');
     // Mặc định an toàn
-    return 'http://127.0.0.1:8080/api/';
+    return 'http://10.0.2.2:8080/api/';
   }
 
   ApiClient() {
@@ -39,7 +38,7 @@ class ApiClient {
         // GỌI HÀM VỪA VIẾT VÀO ĐÂY
         baseUrl: _getDynamicBaseUrl(),
         connectTimeout: const Duration(seconds: 15),
-        receiveTimeout: const Duration(seconds: 3),
+        receiveTimeout: const Duration(seconds: 15),
         headers: {'Content-Type': 'application/json'},
       ),
     );
