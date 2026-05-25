@@ -2,17 +2,18 @@ import 'dart:developer' as developer;
 
 import 'package:dio/dio.dart';
 import 'package:smartlogisticssystem/core/networking.dart';
-import 'package:smartlogisticssystem/data/model/supplier_model.dart';
+import 'package:smartlogisticssystem/data/model/supplier_request_model.dart';
+import 'package:smartlogisticssystem/data/model/supplier_response_model.dart';
 
 class SupplierService {
   final ApiClient _client = ApiClient();
 
-  Future<List<SupplierModel>> getAllSuppliers() async {
+  Future<List<SupplierResponse>> getAllSuppliers() async {
     try {
       final response = await _client.get('suppliers');
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data['data'];
-        return data.map((item) => SupplierModel.fromJson(item)).toList();
+        return data.map((item) => SupplierResponse.fromJson(item)).toList();
       }
       return [];
     } catch (e) {
@@ -25,11 +26,11 @@ class SupplierService {
     }
   }
 
-  Future<SupplierModel> createSupplier(SupplierModel supplier) async {
+  Future<SupplierResponse> createSupplier(SupplierCreateRequest request) async {
     try {
-      final response = await _client.post('suppliers', data: supplier.toJson());
+      final response = await _client.post('suppliers', data: request.toJson());
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return SupplierModel.fromJson(response.data['data']);
+        return SupplierResponse.fromJson(response.data['data']);
       }
       throw DioException(
         requestOptions: response.requestOptions,
@@ -46,14 +47,14 @@ class SupplierService {
     }
   }
 
-  Future<SupplierModel> updateSupplier(int id, SupplierModel supplier) async {
+  Future<SupplierResponse> updateSupplier(int id, SupplierUpdateRequest request) async {
     try {
       final response = await _client.put(
         'suppliers/$id',
-        data: supplier.toJson(),
+        data: request.toJson(),
       );
       if (response.statusCode == 200) {
-        return SupplierModel.fromJson(response.data['data']);
+        return SupplierResponse.fromJson(response.data['data']);
       }
       throw DioException(
         requestOptions: response.requestOptions,

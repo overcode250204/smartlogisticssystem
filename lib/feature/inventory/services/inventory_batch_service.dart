@@ -1,16 +1,17 @@
 import 'package:dio/dio.dart';
 import 'package:smartlogisticssystem/core/networking.dart';
-import 'package:smartlogisticssystem/data/model/inventory_batch_model.dart';
+import 'package:smartlogisticssystem/data/model/inventory_batch_request_model.dart';
+import 'package:smartlogisticssystem/data/model/inventory_batch_response_model.dart';
 
 class InventoryBatchService {
   final ApiClient _client = ApiClient();
 
-  Future<List<InventoryBatchModel>> getAllBatches() async {
+  Future<List<InventoryBatchResponse>> getAllBatches() async {
     try {
       final response = await _client.get('inventory-batches');
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data['data'];
-        return data.map((item) => InventoryBatchModel.fromJson(item)).toList();
+        return data.map((item) => InventoryBatchResponse.fromJson(item)).toList();
       }
       return [];
     } catch (e) {
@@ -23,7 +24,7 @@ class InventoryBatchService {
     }
   }
 
-  Future<InventoryBatchModel> exportStock({
+  Future<InventoryBatchResponse> exportStock({
     required int productId,
     required int quantity,
   }) async {
@@ -33,7 +34,7 @@ class InventoryBatchService {
         data: {'productId': productId, 'quantity': quantity},
       );
       if (response.statusCode == 200) {
-        return InventoryBatchModel.fromJson(response.data['data']);
+        return InventoryBatchResponse.fromJson(response.data['data']);
       }
       throw DioException(
         requestOptions: response.requestOptions,
@@ -50,15 +51,15 @@ class InventoryBatchService {
     }
   }
 
-  Future<InventoryBatchModel> createBatch(InventoryBatchModel batch) async {
+  Future<InventoryBatchResponse> createBatch(InventoryBatchCreateRequest request) async {
     try {
       final response = await _client.post(
         'inventory-batches',
-        data: batch.toJson(),
+        data: request.toJson(),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return InventoryBatchModel.fromJson(response.data['data']);
+        return InventoryBatchResponse.fromJson(response.data['data']);
       }
 
       throw DioException(

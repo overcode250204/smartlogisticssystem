@@ -134,13 +134,13 @@ class StatusPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
+        color: color.withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         label,
-        style: TextStyle(
-          color: color,
+        style: const TextStyle(
+          color: Colors.white,
           fontSize: 12,
           fontWeight: FontWeight.w900,
         ),

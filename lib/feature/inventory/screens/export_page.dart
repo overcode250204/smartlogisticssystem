@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:smartlogisticssystem/core/app_theme.dart';
-import 'package:smartlogisticssystem/data/model/inventory_batch_model.dart';
-import 'package:smartlogisticssystem/data/model/inventory_transaction_model.dart';
-import 'package:smartlogisticssystem/data/model/product_model.dart';
+import 'package:smartlogisticssystem/data/model/inventory_batch_response_model.dart';
+import 'package:smartlogisticssystem/data/model/inventory_transaction_response_model.dart';
+import 'package:smartlogisticssystem/data/model/product_response_model.dart';
 import 'package:smartlogisticssystem/feature/inventory/services/inventory_batch_service.dart';
 import 'package:smartlogisticssystem/feature/inventory/services/inventory_transaction_service.dart';
 import 'package:smartlogisticssystem/feature/inventory/widgets/api_error_message.dart';
@@ -26,11 +26,11 @@ class _ExportPageState extends State<ExportPage> {
   final _reasonController = TextEditingController();
   final _dateController = TextEditingController();
 
-  List<ProductModel> _products = [];
-  List<InventoryBatchModel> _batches = [];
-  List<InventoryTransactionModel> _transactions = [];
-  ProductModel? _selectedProduct;
-  InventoryBatchModel? _selectedBatch;
+  List<ProductResponse> _products = [];
+  List<InventoryBatchResponse> _batches = [];
+  List<InventoryTransactionResponse> _transactions = [];
+  ProductResponse? _selectedProduct;
+  InventoryBatchResponse? _selectedBatch;
   DateTime _exportDate = DateTime.now();
   bool _isLoading = true;
   bool _isSubmitting = false;
@@ -51,14 +51,14 @@ class _ExportPageState extends State<ExportPage> {
     super.dispose();
   }
 
-  List<InventoryBatchModel> get _availableBatches {
+  List<InventoryBatchResponse> get _availableBatches {
     final productId = _selectedProduct?.productId;
     if (productId == null) return [];
 
     return _batches
         .where(
           (batch) =>
-              batch.productId == productId && batch.remainingQuantity > 0,
+              batch.product?.productId == productId && batch.remainingQuantity > 0,
         )
         .toList();
   }
@@ -79,9 +79,9 @@ class _ExportPageState extends State<ExportPage> {
       if (!mounted) return;
 
       setState(() {
-        _products = results[0] as List<ProductModel>;
-        _batches = results[1] as List<InventoryBatchModel>;
-        _transactions = results[2] as List<InventoryTransactionModel>;
+        _products = results[0] as List<ProductResponse>;
+        _batches = results[1] as List<InventoryBatchResponse>;
+        _transactions = results[2] as List<InventoryTransactionResponse>;
         _syncSelectedValues();
         _isLoading = false;
       });
@@ -104,8 +104,8 @@ class _ExportPageState extends State<ExportPage> {
     if (!mounted) return;
 
     setState(() {
-      _batches = results[0] as List<InventoryBatchModel>;
-      _transactions = results[1] as List<InventoryTransactionModel>;
+      _batches = results[0] as List<InventoryBatchResponse>;
+      _transactions = results[1] as List<InventoryTransactionResponse>;
       _syncSelectedValues();
     });
   }
@@ -115,7 +115,7 @@ class _ExportPageState extends State<ExportPage> {
     if (selectedProductId != null) {
       _selectedProduct = _products
           .where((product) => product.productId == selectedProductId)
-          .cast<ProductModel?>()
+          .cast<ProductResponse?>()
           .firstWhere((product) => product != null, orElse: () => null);
     }
 
@@ -123,12 +123,12 @@ class _ExportPageState extends State<ExportPage> {
     if (selectedBatchId != null) {
       _selectedBatch = _availableBatches
           .where((batch) => batch.batchId == selectedBatchId)
-          .cast<InventoryBatchModel?>()
+          .cast<InventoryBatchResponse?>()
           .firstWhere((batch) => batch != null, orElse: () => null);
     }
   }
 
-  void _onProductChanged(ProductModel? product) {
+  void _onProductChanged(ProductResponse? product) {
     setState(() {
       _selectedProduct = product;
       _selectedBatch = null;
@@ -237,7 +237,7 @@ class _ExportPageState extends State<ExportPage> {
                     runSpacing: 16,
                     children: [
                       _FieldBox(
-                        child: DropdownButtonFormField<ProductModel>(
+                        child: DropdownButtonFormField<ProductResponse>(
                           initialValue: _selectedProduct,
                           decoration: const InputDecoration(
                             labelText: 'Sản phẩm',
@@ -260,7 +260,7 @@ class _ExportPageState extends State<ExportPage> {
                         ),
                       ),
                       _FieldBox(
-                        child: DropdownButtonFormField<InventoryBatchModel>(
+                        child: DropdownButtonFormField<InventoryBatchResponse>(
                           initialValue: _selectedBatch,
                           decoration: InputDecoration(
                             labelText: 'Lô hàng',
@@ -376,8 +376,8 @@ class _ExportPageState extends State<ExportPage> {
                       .map(
                         (item) => DataRow(
                           cells: [
-                            DataCell(Text('GD${item.transactionId ?? ''}')),
-                            DataCell(Text('LH${item.displayBatchId ?? ''}')),
+                            DataCell(Text('GD${item.transactionId}')),
+                            DataCell(Text('LH${item.batch?.batchId ?? ''}')),
                             DataCell(Text(item.quantity.toString())),
                             DataCell(
                               Text(dateFormatter.format(item.createdAt)),

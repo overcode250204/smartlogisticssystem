@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:smartlogisticssystem/core/app_theme.dart';
-import 'package:smartlogisticssystem/data/model/supplier_model.dart';
+import 'package:smartlogisticssystem/data/model/supplier_request_model.dart';
+import 'package:smartlogisticssystem/data/model/supplier_response_model.dart';
 import 'package:smartlogisticssystem/feature/inventory/widgets/api_error_message.dart';
 import 'package:smartlogisticssystem/widgets/dashboard_widgets.dart';
 import 'package:smartlogisticssystem/feature/supplier/screens/create_supplier_dialog.dart';
@@ -15,7 +16,7 @@ class SuppliersPage extends StatefulWidget {
 
 class _SuppliersPageState extends State<SuppliersPage> {
   final SupplierService _supplierService = SupplierService();
-  List<SupplierModel> _suppliers = [];
+  List<SupplierResponse> _suppliers = [];
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -49,7 +50,7 @@ class _SuppliersPageState extends State<SuppliersPage> {
     }
   }
 
-  Future<void> _deleteSupplier(SupplierModel supplier) async {
+  Future<void> _deleteSupplier(SupplierResponse supplier) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -78,7 +79,7 @@ class _SuppliersPageState extends State<SuppliersPage> {
     if (confirm != true) return;
 
     try {
-      await _supplierService.deleteSupplier(supplier.supplierId!);
+      await _supplierService.deleteSupplier(supplier.supplierId);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -178,7 +179,7 @@ class _SuppliersPageState extends State<SuppliersPage> {
                     .map(
                       (supplier) => DataRow(
                         cells: [
-                          DataCell(Text('NCC${supplier.supplierId ?? ''}')),
+                          DataCell(Text('NCC${supplier.supplierId}')),
                           DataCell(Text(supplier.supplierName)),
                           DataCell(Text(supplier.contactPhone ?? '')),
                           DataCell(Text(supplier.address ?? '')),
@@ -218,7 +219,7 @@ class _SuppliersPageState extends State<SuppliersPage> {
     );
   }
 
-  void _showSupplierDialog(BuildContext context, [SupplierModel? supplier]) {
+  void _showSupplierDialog(BuildContext context, [SupplierResponse? supplier]) {
     showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -237,7 +238,7 @@ class _SuppliersPageState extends State<SuppliersPage> {
 }
 
 class _SupplierDialog extends StatefulWidget {
-  final SupplierModel? supplier;
+  final SupplierResponse? supplier;
   final SupplierService supplierService;
 
   const _SupplierDialog({this.supplier, required this.supplierService});
@@ -282,16 +283,13 @@ class _SupplierDialogState extends State<_SupplierDialog> {
     });
 
     try {
-      final model = SupplierModel(
-        supplierId: widget.supplier?.supplierId,
-        supplierName: _nameController.text.trim(),
-        contactPhone: _phoneController.text.trim(),
-        address: _addressController.text.trim(),
-        createdAt: widget.supplier?.createdAt,
-      );
-
       if (widget.supplier == null) {
-        await widget.supplierService.createSupplier(model);
+        final request = SupplierCreateRequest(
+          supplierName: _nameController.text.trim(),
+          contactPhone: _phoneController.text.trim(),
+          address: _addressController.text.trim(),
+        );
+        await widget.supplierService.createSupplier(request);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -301,7 +299,12 @@ class _SupplierDialogState extends State<_SupplierDialog> {
           );
         }
       } else {
-        await widget.supplierService.updateSupplier(model.supplierId!, model);
+        final request = SupplierUpdateRequest(
+          supplierName: _nameController.text.trim(),
+          contactPhone: _phoneController.text.trim(),
+          address: _addressController.text.trim(),
+        );
+        await widget.supplierService.updateSupplier(widget.supplier!.supplierId, request);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(

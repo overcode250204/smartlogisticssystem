@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:smartlogisticssystem/core/app_theme.dart';
-import 'package:smartlogisticssystem/data/model/inventory_batch_model.dart';
-import 'package:smartlogisticssystem/data/model/product_model.dart';
+import 'package:smartlogisticssystem/data/model/inventory_batch_response_model.dart';
+import 'package:smartlogisticssystem/data/model/inventory_batch_request_model.dart';
+import 'package:smartlogisticssystem/data/model/product_response_model.dart';
 import 'package:smartlogisticssystem/feature/inventory/services/inventory_batch_service.dart';
 import 'package:smartlogisticssystem/feature/inventory/widgets/api_error_message.dart';
 import 'package:smartlogisticssystem/feature/product/product_service/product_service.dart';
@@ -25,9 +26,9 @@ class _ImportPageState extends State<ImportPage> {
   final _supplierController = TextEditingController();
   final _noteController = TextEditingController();
 
-  List<ProductModel> _products = [];
-  List<InventoryBatchModel> _batches = [];
-  ProductModel? _selectedProduct;
+  List<ProductResponse> _products = [];
+  List<InventoryBatchResponse> _batches = [];
+  ProductResponse? _selectedProduct;
 
   DateTime _importDate = DateTime.now();
   DateTime? _expirationDate;
@@ -68,8 +69,8 @@ class _ImportPageState extends State<ImportPage> {
       if (!mounted) return;
 
       setState(() {
-        _products = results[0] as List<ProductModel>;
-        _batches = results[1] as List<InventoryBatchModel>;
+        _products = results[0] as List<ProductResponse>;
+        _batches = results[1] as List<InventoryBatchResponse>;
         _isLoading = false;
       });
     } catch (error) {
@@ -128,10 +129,10 @@ class _ImportPageState extends State<ImportPage> {
     }
   }
 
-  void _onProductChanged(ProductModel? product) {
+  void _onProductChanged(ProductResponse? product) {
     setState(() {
       _selectedProduct = product;
-      _supplierController.text = product?.supplierName ?? '';
+      _supplierController.text = product?.supplier?.supplierName ?? '';
     });
   }
 
@@ -162,7 +163,7 @@ class _ImportPageState extends State<ImportPage> {
     try {
       final quantity = int.parse(_quantityController.text.trim());
 
-      final batch = InventoryBatchModel(
+      final batch = InventoryBatchCreateRequest(
         productId: _selectedProduct!.productId!,
         quantity: quantity,
         remainingQuantity: quantity,
@@ -239,7 +240,7 @@ class _ImportPageState extends State<ImportPage> {
                     runSpacing: 16,
                     children: [
                       _FieldBox(
-                        child: DropdownButtonFormField<ProductModel>(
+                        child: DropdownButtonFormField<ProductResponse>(
                           initialValue: _selectedProduct,
                           decoration: const InputDecoration(
                             labelText: 'Chọn sản phẩm',
@@ -367,7 +368,7 @@ class _ImportPageState extends State<ImportPage> {
                         (batch) => DataRow(
                           cells: [
                             DataCell(Text('LH${batch.batchId ?? ''}')),
-                            DataCell(Text(batch.productName ?? '')),
+                            DataCell(Text((batch.product?.productName ?? "") ?? '')),
                             DataCell(Text(batch.quantity.toString())),
                             DataCell(
                               Text(dateFormatter.format(batch.importDate)),

@@ -55,7 +55,11 @@ class _DashboardPageState extends State<DashboardPage> {
         final totalBatches = data.batches.length;
         
         final lowStockBatches = data.batches.where((b) {
-          final minStock = b.product?.minStockLevel ?? 0;
+          final productId = b.product?.productId;
+          final minStock = data.products
+              .where((p) => p.productId == productId)
+              .map((p) => p.minStockLevel)
+              .firstOrNull ?? 0;
           return b.remainingQuantity <= minStock;
         }).toList();
 
@@ -123,7 +127,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             ...topTransactions.map(
                               (item) => ListTile(
                                 contentPadding: EdgeInsets.zero,
-                                title: Text('GD${item.transactionId ?? ''}'),
+                                title: Text('GD${item.transactionId}'),
                                 subtitle: Text(
                                   dateTimeFormatter.format(item.createdAt),
                                 ),
@@ -149,17 +153,24 @@ class _DashboardPageState extends State<DashboardPage> {
                             )
                           else
                             ...lowStockBatches.map(
-                              (item) => ListTile(
-                                contentPadding: EdgeInsets.zero,
-                                title: Text('${item.productName} (LH${item.batchId ?? ''})'),
-                                subtitle: Text(
-                                  'Còn ${item.remainingQuantity} (Tối thiểu: ${item.product?.minStockLevel ?? 0})',
-                                ),
-                                trailing: const Icon(
-                                  Icons.warning_amber_rounded,
-                                  color: AppColors.warning,
-                                ),
-                              ),
+                              (item) {
+                                final productId = item.product?.productId;
+                                final minStock = data.products
+                                    .where((p) => p.productId == productId)
+                                    .map((p) => p.minStockLevel)
+                                    .firstOrNull ?? 0;
+                                return ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  title: Text('${item.product?.productName ?? ''} (LH${item.batchId})'),
+                                  subtitle: Text(
+                                    'Còn ${item.remainingQuantity} (Tối thiểu: $minStock)',
+                                  ),
+                                  trailing: const Icon(
+                                    Icons.warning_amber_rounded,
+                                    color: AppColors.warning,
+                                  ),
+                                );
+                              },
                             ),
                         ],
                       ),

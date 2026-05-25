@@ -2,17 +2,18 @@ import 'dart:developer' as developer;
 
 import 'package:dio/dio.dart';
 import 'package:smartlogisticssystem/core/networking.dart';
-import 'package:smartlogisticssystem/data/model/product_model.dart';
+import 'package:smartlogisticssystem/data/model/product_request_model.dart';
+import 'package:smartlogisticssystem/data/model/product_response_model.dart';
 
 class ProductService {
   final ApiClient _client = ApiClient();
 
-  Future<List<ProductModel>> getAllProducts() async {
+  Future<List<ProductResponse>> getAllProducts() async {
     try {
       final response = await _client.get('products');
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data['data'];
-        return data.map((item) => ProductModel.fromJson(item)).toList();
+        return data.map((item) => ProductResponse.fromJson(item)).toList();
       }
       return [];
     } catch (e) {
@@ -25,7 +26,7 @@ class ProductService {
     }
   }
 
-  Future<List<ProductModel>> fetchProducts() async {
+  Future<List<ProductResponse>> fetchProducts() async {
     try {
       return await getAllProducts();
     } catch (e) {
@@ -33,12 +34,12 @@ class ProductService {
     }
   }
 
-  Future<ProductModel> createProduct(ProductModel product) async {
+  Future<ProductResponse> createProduct(ProductCreateRequest request) async {
     try {
-      final response = await _client.post('products', data: product.toJson());
+      final response = await _client.post('products', data: request.toJson());
       if (response.statusCode == 200 || response.statusCode == 201) {
         final dynamic data = response.data['data'];
-        return ProductModel.fromJson(data);
+        return ProductResponse.fromJson(data);
       }
       throw DioException(
         requestOptions: response.requestOptions,
@@ -55,48 +56,48 @@ class ProductService {
     }
   }
 
-  Future<ProductModel> updateProduct(ProductModel product) async {
+  Future<ProductResponse?> updateProduct(int id, ProductUpdateRequest request) async {
     try {
       final response = await _client.put(
-        'products/${product.productId}',
-        data: product.toJson(),
+        'products/$id',
+        data: request.toJson(),
       );
       if (response.statusCode == 200) {
         final dynamic data = response.data['data'];
-        return ProductModel.fromJson(data);
+        return ProductResponse.fromJson(data);
       }
-      return ProductModel.empty();
+      return null;
     } catch (e) {
       developer.log('Error updating product', error: e);
-      return ProductModel.empty();
+      return null;
     }
   }
 
-  Future<ProductModel> deleteProduct(int id) async {
+  Future<ProductResponse?> deleteProduct(int id) async {
     try {
       final response = await _client.delete('products/$id');
       if (response.statusCode == 200) {
         final dynamic data = response.data['data'];
-        return ProductModel.fromJson(data);
+        return ProductResponse.fromJson(data);
       }
-      return ProductModel.empty();
+      return null;
     } catch (e) {
       developer.log('Error deleting product', error: e);
-      return ProductModel.empty();
+      return null;
     }
   }
 
-  Future<ProductModel> fetchProductById(int id) async {
+  Future<ProductResponse?> fetchProductById(int id) async {
     try {
       final response = await _client.get('products/$id');
       if (response.statusCode == 200) {
         final dynamic data = response.data['data'];
-        return ProductModel.fromJson(data);
+        return ProductResponse.fromJson(data);
       }
-      return ProductModel.empty();
+      return null;
     } catch (e) {
       developer.log('Error fetching product', error: e);
-      return ProductModel.empty();
+      return null;
     }
   }
 }

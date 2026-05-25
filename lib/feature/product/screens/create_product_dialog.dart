@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:smartlogisticssystem/core/app_theme.dart';
-import 'package:smartlogisticssystem/data/model/product_model.dart';
-import 'package:smartlogisticssystem/data/model/supplier_model.dart';
+import 'package:smartlogisticssystem/data/model/product_request_model.dart';
+import 'package:smartlogisticssystem/data/model/product_response_model.dart';
+import 'package:smartlogisticssystem/data/model/supplier_response_model.dart';
 import 'package:smartlogisticssystem/feature/inventory/widgets/api_error_message.dart';
 import 'package:smartlogisticssystem/feature/supplier/screens/create_supplier_dialog.dart';
 import 'package:smartlogisticssystem/feature/product/product_service/product_service.dart';
@@ -23,9 +24,9 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
   final ProductService _productService = ProductService();
   final SupplierService _supplierService = SupplierService();
 
-  late Future<List<SupplierModel>> _suppliersFuture;
-  List<SupplierModel> _suppliers = [];
-  SupplierModel? _selectedSupplier;
+  late Future<List<SupplierResponse>> _suppliersFuture;
+  List<SupplierResponse> _suppliers = [];
+  SupplierResponse? _selectedSupplier;
   bool _isSubmitting = false;
   String? _errorMessage;
 
@@ -44,7 +45,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
     super.dispose();
   }
 
-  Future<List<SupplierModel>> _loadSuppliers() async {
+  Future<List<SupplierResponse>> _loadSuppliers() async {
     final suppliers = await _supplierService.getAllSuppliers();
     _suppliers = suppliers;
     if (_selectedSupplier == null && suppliers.isNotEmpty) {
@@ -54,7 +55,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
   }
 
   Future<void> _openCreateSupplierDialog() async {
-    final supplier = await showDialog<SupplierModel>(
+    final supplier = await showDialog<SupplierResponse>(
       context: context,
       builder: (context) => const CreateSupplierDialog(),
     );
@@ -87,8 +88,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
 
     try {
       final product = await _productService.createProduct(
-        ProductModel(
-          supplier: supplier,
+        ProductCreateRequest(
           supplierId: supplier.supplierId,
           productCode: _codeController.text.trim(),
           productName: _nameController.text.trim(),
@@ -129,7 +129,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
           ),
           child: Form(
             key: _formKey,
-            child: FutureBuilder<List<SupplierModel>>(
+            child: FutureBuilder<List<SupplierResponse>>(
               future: _suppliersFuture,
               builder: (context, snapshot) {
                 final isLoadingSuppliers =
@@ -364,9 +364,9 @@ class _LoadingSuppliers extends StatelessWidget {
 }
 
 class _SupplierPicker extends StatelessWidget {
-  final List<SupplierModel> suppliers;
-  final SupplierModel? selectedSupplier;
-  final ValueChanged<SupplierModel?> onChanged;
+  final List<SupplierResponse> suppliers;
+  final SupplierResponse? selectedSupplier;
+  final ValueChanged<SupplierResponse?> onChanged;
   final VoidCallback onCreateSupplier;
 
   const _SupplierPicker({
@@ -409,7 +409,7 @@ class _SupplierPicker extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
-          child: DropdownButtonFormField<SupplierModel>(
+          child: DropdownButtonFormField<SupplierResponse>(
             initialValue: selectedSupplier,
             decoration: const InputDecoration(
               labelText: 'Supplier',

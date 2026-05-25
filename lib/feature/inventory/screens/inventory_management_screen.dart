@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:smartlogisticssystem/core/app_theme.dart';
-import 'package:smartlogisticssystem/data/model/inventory_batch_model.dart';
-import 'package:smartlogisticssystem/data/model/inventory_transaction_model.dart';
-import 'package:smartlogisticssystem/data/model/product_model.dart';
+import 'package:smartlogisticssystem/data/model/inventory_batch_response_model.dart';
+import 'package:smartlogisticssystem/data/model/inventory_transaction_response_model.dart';
+import 'package:smartlogisticssystem/data/model/product_response_model.dart';
 import 'package:smartlogisticssystem/feature/inventory/services/inventory_service.dart';
 import 'package:smartlogisticssystem/widgets/dashboard_widgets.dart';
 import 'package:smartlogisticssystem/feature/supplier/screens/create_supplier_dialog.dart';
@@ -48,7 +48,7 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
   }
 
   Future<void> _openCreateProductDialog() async {
-    final product = await showDialog<ProductModel>(
+    final product = await showDialog<ProductResponse>(
       context: context,
       barrierDismissible: false,
       builder: (_) => const CreateProductDialog(),
@@ -291,7 +291,10 @@ class _StatsGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lowStockCount = data.batches
-        .where((b) => b.remainingQuantity <= (b.product?.minStockLevel ?? 0))
+        .where((b) {
+          final p = data.products.where((p) => p.productId == b.product?.productId).firstOrNull;
+          return b.remainingQuantity <= (p?.minStockLevel ?? 0);
+        })
         .length;
 
     final cards = [
@@ -416,7 +419,7 @@ class _ProductsTab extends StatelessWidget {
               product.productCode.toLowerCase().contains(
                 searchQuery.toLowerCase(),
               ) ||
-              product.supplierName.toLowerCase().contains(
+              (product.supplier?.supplierName ?? "").toLowerCase().contains(
                 searchQuery.toLowerCase(),
               ),
         )
@@ -488,12 +491,12 @@ class _ProductsTab extends StatelessWidget {
     );
   }
 
-  DataRow _productRow(ProductModel product) {
+  DataRow _productRow(ProductResponse product) {
     return DataRow(
       cells: [
         DataCell(Text(product.productCode)),
         DataCell(Text(product.productName)),
-        DataCell(Text(product.supplierName)),
+        DataCell(Text(product.supplier?.supplierName ?? "")),
         DataCell(Text(product.minStockLevel.toString())),
         DataCell(Text(currencyFormatter.format(product.price))),
         DataCell(
@@ -519,7 +522,7 @@ class _ProductsTab extends StatelessWidget {
 }
 
 class _BatchesTab extends StatelessWidget {
-  final List<InventoryBatchModel> batches;
+  final List<InventoryBatchResponse> batches;
 
   const _BatchesTab({required this.batches});
 
@@ -542,7 +545,7 @@ class _BatchesTab extends StatelessWidget {
               (batch) => DataRow(
                 cells: [
                   DataCell(Text('LH${batch.batchId ?? ''}')),
-                  DataCell(Text(batch.productName ?? '')),
+                  DataCell(Text((batch.product?.productName ?? "") ?? '')),
                   DataCell(Text(dateFormatter.format(batch.importDate))),
                   DataCell(Text(dateFormatter.format(batch.expirationDate))),
                   DataCell(Text(batch.quantity.toString())),
@@ -558,7 +561,7 @@ class _BatchesTab extends StatelessWidget {
 }
 
 class _TransactionsTab extends StatelessWidget {
-  final List<InventoryTransactionModel> transactions;
+  final List<InventoryTransactionResponse> transactions;
 
   const _TransactionsTab({required this.transactions});
 
@@ -579,7 +582,7 @@ class _TransactionsTab extends StatelessWidget {
               (transaction) => DataRow(
                 cells: [
                   DataCell(Text('GD${transaction.transactionId ?? ''}')),
-                  DataCell(Text('LH${transaction.displayBatchId ?? ''}')),
+                  DataCell(Text('LH${transaction.batch?.batchId ?? ''}')),
                   DataCell(StatusPill.transaction(transaction.type)),
                   DataCell(Text(transaction.quantity.toString())),
                   DataCell(
@@ -618,7 +621,7 @@ class _BottomGrid extends StatelessWidget {
                   (batch) => ListTile(
                     dense: true,
                     contentPadding: EdgeInsets.zero,
-                    title: Text(batch.productName ?? ''),
+                    title: Text((batch.product?.productName ?? "") ?? ''),
                     subtitle: Text(
                       'Hạn dùng ${dateFormatter.format(batch.expirationDate)}',
                     ),
