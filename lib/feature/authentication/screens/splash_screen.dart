@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 // THAY ĐỔI ĐƯỜNG DẪN IMPORT CHO ĐÚNG VỚI MÁY CỦA BẠN:
 import 'package:smartlogisticssystem/feature/authentication/screens/login_screen.dart';
 import 'package:smartlogisticssystem/feature/driver/driver_screens/driver_screen.dart';
+import 'package:smartlogisticssystem/feature/inventory/screens/inventory_management_screen.dart';
 import 'package:smartlogisticssystem/feature/user/screens/user_screens.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -41,9 +42,7 @@ class _SplashScreenState extends State<SplashScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => const Scaffold(
-              body: Center(child: Text('Màn hình Quản lý Kho của Bảo')),
-            ),
+            builder: (context) => const InventoryManagementScreen(),
           ),
         );
       } else if (roleId == 3) {

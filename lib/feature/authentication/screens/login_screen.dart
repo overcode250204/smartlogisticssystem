@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smartlogisticssystem/feature/authentication/auth_service/auth_service.dart';
 import 'package:smartlogisticssystem/feature/driver/driver_screens/driver_register_screen.dart';
 import 'package:smartlogisticssystem/feature/driver/driver_screens/driver_screen.dart';
+import 'package:smartlogisticssystem/feature/inventory/screens/inventory_management_screen.dart';
 import 'package:smartlogisticssystem/feature/user/screens/user_screens.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
@@ -81,9 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const Scaffold(
-                    body: Center(child: Text('Màn hình Quản lý Kho của Bảo')),
-                  ),
+                  builder: (context) => const InventoryManagementScreen(),
                 ),
               );
             }

@@ -45,7 +45,16 @@ class _CameraLivePreviewPageState extends State<CameraLivePreviewPage> {
         future: _initializeControllerFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.done) {
-            return Center(child: CameraPreview(_cameraController));
+            return SizedBox.expand(
+              child: FittedBox(
+                fit: BoxFit.cover,
+                child: SizedBox(
+                  width: _cameraController.value.previewSize?.height ?? 1,
+                  height: _cameraController.value.previewSize?.width ?? 1,
+                  child: CameraPreview(_cameraController),
+                ),
+              ),
+            );
           } else {
             return const Center(child: CircularProgressIndicator());
           }
