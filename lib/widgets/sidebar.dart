@@ -42,6 +42,16 @@ class Sidebar extends StatelessWidget {
       route: '/suppliers',
       icon: Icons.groups_outlined,
     ),
+    SidebarItem(
+      label: 'Hóa đơn',
+      route: '/invoices',
+      icon: Icons.receipt_long_outlined,
+    ),
+    SidebarItem(
+      label: 'Dashboard TC',
+      route: '/financial-dashboard',
+      icon: Icons.bar_chart_rounded,
+    ),
   ];
 
   @override

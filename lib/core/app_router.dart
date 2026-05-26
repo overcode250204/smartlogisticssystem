@@ -5,6 +5,8 @@ import 'package:smartlogisticssystem/feature/inventory/screens/dashboard_page.da
 import 'package:smartlogisticssystem/feature/inventory/screens/export_page.dart';
 import 'package:smartlogisticssystem/feature/inventory/screens/import_page.dart';
 import 'package:smartlogisticssystem/feature/inventory/screens/inventory_management_screen.dart';
+import 'package:smartlogisticssystem/feature/invoice/screens/financial_dashboard_screen.dart';
+import 'package:smartlogisticssystem/feature/invoice/screens/invoice_list_screen.dart';
 import 'package:smartlogisticssystem/feature/supplier/screens/suppliers_page.dart';
 import 'package:smartlogisticssystem/widgets/app_shell.dart';
 
@@ -51,6 +53,16 @@ final appRouter = GoRouter(
           pageBuilder: (context, state) =>
               const NoTransitionPage(child: SuppliersPage()),
         ),
+        GoRoute(
+          path: '/invoices',
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: InvoiceListScreen()),
+        ),
+        GoRoute(
+          path: '/financial-dashboard',
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: FinancialDashboardScreen()),
+        ),
       ],
     ),
   ],
@@ -66,6 +78,8 @@ String _titleForPath(String path) {
     '/export' => 'Xuất hàng',
     '/reports' => 'Báo cáo',
     '/suppliers' => 'Nhà cung cấp',
+    '/invoices' => 'Quản lý Hóa đơn',
+    '/financial-dashboard' => 'Dashboard Tài chính',
     '/settings' => 'Cài đặt',
     _ => 'Smart Logistics',
   };
