@@ -11,7 +11,9 @@ class InventoryBatchService {
       final response = await _client.get('inventory-batches');
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data['data'];
-        return data.map((item) => InventoryBatchResponse.fromJson(item)).toList();
+        return data
+            .map((item) => InventoryBatchResponse.fromJson(item))
+            .toList();
       }
       return [];
     } catch (e) {
@@ -24,7 +26,7 @@ class InventoryBatchService {
     }
   }
 
-  Future<InventoryBatchResponse> exportStock({
+  Future<InventoryExportResponse> exportStock({
     required int productId,
     required int quantity,
   }) async {
@@ -34,12 +36,12 @@ class InventoryBatchService {
         data: {'productId': productId, 'quantity': quantity},
       );
       if (response.statusCode == 200) {
-        return InventoryBatchResponse.fromJson(response.data['data']);
+        return InventoryExportResponse.fromJson(response.data['data']);
       }
       throw DioException(
         requestOptions: response.requestOptions,
         response: response,
-        message: 'Không thể xuất kho lô hàng',
+        message: 'Không thể xuất kho',
       );
     } catch (e) {
       print('Error in exportStock: $e');
@@ -51,7 +53,9 @@ class InventoryBatchService {
     }
   }
 
-  Future<InventoryBatchResponse> createBatch(InventoryBatchCreateRequest request) async {
+  Future<InventoryBatchResponse> createBatch(
+    InventoryBatchCreateRequest request,
+  ) async {
     try {
       final response = await _client.post(
         'inventory-batches',

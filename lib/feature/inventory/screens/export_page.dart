@@ -23,14 +23,13 @@ class _ExportPageState extends State<ExportPage> {
       InventoryTransactionService();
   final _formKey = GlobalKey<FormState>();
   final _quantityController = TextEditingController();
-  final _reasonController = TextEditingController();
   final _dateController = TextEditingController();
 
   List<ProductResponse> _products = [];
   List<InventoryBatchResponse> _batches = [];
   List<InventoryTransactionResponse> _transactions = [];
   ProductResponse? _selectedProduct;
-  InventoryBatchResponse? _selectedBatch;
+  InventoryExportResponse? _lastExport;
   DateTime _exportDate = DateTime.now();
   bool _isLoading = true;
   bool _isSubmitting = false;
@@ -46,7 +45,6 @@ class _ExportPageState extends State<ExportPage> {
   @override
   void dispose() {
     _quantityController.dispose();
-    _reasonController.dispose();
     _dateController.dispose();
     super.dispose();
   }
@@ -61,6 +59,13 @@ class _ExportPageState extends State<ExportPage> {
               batch.product?.productId == productId && batch.remainingQuantity > 0,
         )
         .toList();
+  }
+
+  int get _availableStock {
+    return _availableBatches.fold(
+      0,
+      (total, batch) => total + batch.remainingQuantity,
+    );
   }
 
   Future<void> _loadData() async {
@@ -82,7 +87,7 @@ class _ExportPageState extends State<ExportPage> {
         _products = results[0] as List<ProductResponse>;
         _batches = results[1] as List<InventoryBatchResponse>;
         _transactions = results[2] as List<InventoryTransactionResponse>;
-        _syncSelectedValues();
+        _syncSelectedProduct();
         _isLoading = false;
       });
     } catch (error) {
@@ -106,11 +111,11 @@ class _ExportPageState extends State<ExportPage> {
     setState(() {
       _batches = results[0] as List<InventoryBatchResponse>;
       _transactions = results[1] as List<InventoryTransactionResponse>;
-      _syncSelectedValues();
+      _syncSelectedProduct();
     });
   }
 
-  void _syncSelectedValues() {
+  void _syncSelectedProduct() {
     final selectedProductId = _selectedProduct?.productId;
     if (selectedProductId != null) {
       _selectedProduct = _products
@@ -118,20 +123,12 @@ class _ExportPageState extends State<ExportPage> {
           .cast<ProductResponse?>()
           .firstWhere((product) => product != null, orElse: () => null);
     }
-
-    final selectedBatchId = _selectedBatch?.batchId;
-    if (selectedBatchId != null) {
-      _selectedBatch = _availableBatches
-          .where((batch) => batch.batchId == selectedBatchId)
-          .cast<InventoryBatchResponse?>()
-          .firstWhere((batch) => batch != null, orElse: () => null);
-    }
   }
 
   void _onProductChanged(ProductResponse? product) {
     setState(() {
       _selectedProduct = product;
-      _selectedBatch = null;
+      _lastExport = null;
       _errorMessage = null;
     });
   }
@@ -161,8 +158,6 @@ class _ExportPageState extends State<ExportPage> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final batch = _selectedBatch;
-    if (batch?.batchId == null) return;
     final productId = _selectedProduct?.productId;
     final quantity = int.tryParse(_quantityController.text.trim());
     if (productId == null || quantity == null) return;
@@ -173,15 +168,17 @@ class _ExportPageState extends State<ExportPage> {
     });
 
     try {
-      await _batchService.exportStock(productId: productId, quantity: quantity);
+      final exportResult = await _batchService.exportStock(
+        productId: productId,
+        quantity: quantity,
+      );
       await _reloadAfterExport();
 
       if (!mounted) return;
 
       _quantityController.clear();
-      _reasonController.clear();
       setState(() {
-        _selectedBatch = null;
+        _lastExport = exportResult;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -260,60 +257,17 @@ class _ExportPageState extends State<ExportPage> {
                         ),
                       ),
                       _FieldBox(
-                        child: DropdownButtonFormField<InventoryBatchResponse>(
-                          initialValue: _selectedBatch,
-                          decoration: InputDecoration(
-                            labelText: 'Lô hàng',
-                            prefixIcon: const Icon(Icons.all_inbox_outlined),
-                            helperText: _selectedProduct == null
-                                ? 'Chọn sản phẩm trước'
-                                : '${_availableBatches.length} lô còn hàng',
-                          ),
-                          items: _availableBatches
-                              .map(
-                                (batch) => DropdownMenuItem(
-                                  value: batch,
-                                  child: Text(
-                                    'LH${batch.batchId} - Còn ${batch.remainingQuantity}',
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: _selectedProduct == null || _isSubmitting
-                              ? null
-                              : (value) {
-                                  setState(() {
-                                    _selectedBatch = value;
-                                    _errorMessage = null;
-                                  });
-                                },
-                          validator: (value) =>
-                              value == null ? 'Vui lòng chọn lô hàng' : null,
-                        ),
-                      ),
-                      _FieldBox(
                         child: TextFormField(
                           controller: _quantityController,
                           enabled: !_isSubmitting,
                           keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
+                          decoration: const InputDecoration(
                             labelText: 'Số lượng xuất',
-                            prefixIcon: const Icon(Icons.outbox_outlined),
-                            helperText: _selectedBatch == null
-                                ? null
-                                : 'Tồn lô: ${_selectedBatch!.remainingQuantity}',
+                            prefixIcon: Icon(Icons.outbox_outlined),
+                            helperText:
+                                'Hệ thống tự động chọn lô theo FIFO/FEFO',
                           ),
                           validator: _quantityValidator,
-                        ),
-                      ),
-                      _FieldBox(
-                        child: TextFormField(
-                          controller: _reasonController,
-                          enabled: !_isSubmitting,
-                          decoration: const InputDecoration(
-                            labelText: 'Lý do',
-                            prefixIcon: Icon(Icons.notes_outlined),
-                          ),
                         ),
                       ),
                       _FieldBox(
@@ -352,6 +306,10 @@ class _ExportPageState extends State<ExportPage> {
                       foregroundColor: Colors.white,
                     ),
                   ),
+                  if (_lastExport != null) ...[
+                    const SizedBox(height: 18),
+                    _ExportDetails(exportResult: _lastExport!),
+                  ],
                 ],
               ),
             ),
@@ -408,12 +366,68 @@ class _ExportPageState extends State<ExportPage> {
       return 'Số lượng xuất phải lớn hơn 0';
     }
 
-    final batch = _selectedBatch;
-    if (batch != null && quantity > batch.remainingQuantity) {
-      return 'Số lượng xuất không được vượt quá tồn lô';
+    final product = _selectedProduct;
+    if (product != null && quantity > _availableStock) {
+      return 'Số lượng xuất không được vượt quá tồn kho hiện có ($_availableStock)';
     }
 
     return null;
+  }
+}
+
+class _ExportDetails extends StatelessWidget {
+  final InventoryExportResponse exportResult;
+
+  const _ExportDetails({required this.exportResult});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.22)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.lock_outline_rounded, color: AppColors.primary),
+              SizedBox(width: 8),
+              SectionTitle('Chi tiết xuất kho'),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Đã xuất ${exportResult.exportedQuantity}/${exportResult.requestedQuantity}. '
+            'Lô được hệ thống tự động phân bổ theo FIFO/FEFO.',
+            style: const TextStyle(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 12),
+          DarkTable(
+            columns: const [
+              DataColumn(label: Text('Mã lô')),
+              DataColumn(label: Text('Số lượng xuất')),
+              DataColumn(label: Text('Còn lại')),
+            ],
+            rows: exportResult.batches
+                .map(
+                  (batch) => DataRow(
+                    cells: [
+                      DataCell(Text('LH${batch.batchId}')),
+                      DataCell(Text(batch.exportedQuantity.toString())),
+                      DataCell(Text(batch.remainingQuantity.toString())),
+                    ],
+                  ),
+                )
+                .toList(),
+          ),
+        ],
+      ),
+    );
   }
 }
 

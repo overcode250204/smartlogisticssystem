@@ -26,7 +26,7 @@ class InventoryBatchResponse {
   factory InventoryBatchResponse.fromJson(Map<String, dynamic> json) {
     return InventoryBatchResponse(
       batchId: json['batchId'] as int? ?? 0,
-      product: json['product'] != null 
+      product: json['product'] != null
           ? ProductSimpleResponse.fromJson(json['product'])
           : null,
       requestedQuantity: _parseInt(json['requestedQuantity']),
@@ -69,9 +69,68 @@ class InventoryBatchSimpleResponse {
   factory InventoryBatchSimpleResponse.fromJson(Map<String, dynamic> json) {
     return InventoryBatchSimpleResponse(
       batchId: json['batchId'] as int? ?? 0,
-      productName: json['productName']?.toString() ?? json['product']?['productName']?.toString(),
+      productName: json['productName']?.toString() ??
+          json['product']?['productName']?.toString(),
       remainingQuantity: json['remainingQuantity'] as int? ?? 0,
       status: json['status']?.toString() ?? 'Good',
+    );
+  }
+}
+
+class InventoryExportResponse {
+  final ProductSimpleResponse? product;
+  final int requestedQuantity;
+  final int exportedQuantity;
+  final int remainingStock;
+  final List<InventoryExportBatch> batches;
+
+  const InventoryExportResponse({
+    this.product,
+    required this.requestedQuantity,
+    required this.exportedQuantity,
+    required this.remainingStock,
+    required this.batches,
+  });
+
+  factory InventoryExportResponse.fromJson(Map<String, dynamic> json) {
+    return InventoryExportResponse(
+      product: json['product'] != null
+          ? ProductSimpleResponse.fromJson(json['product'])
+          : null,
+      requestedQuantity:
+          InventoryBatchResponse._parseInt(json['requestedQuantity']) ?? 0,
+      exportedQuantity:
+          InventoryBatchResponse._parseInt(json['exportedQuantity']) ?? 0,
+      remainingStock:
+          InventoryBatchResponse._parseInt(json['remainingStock']) ?? 0,
+      batches: json['batches'] is List
+          ? (json['batches'] as List)
+              .whereType<Map<String, dynamic>>()
+              .map((item) => InventoryExportBatch.fromJson(item))
+              .toList()
+          : const [],
+    );
+  }
+}
+
+class InventoryExportBatch {
+  final int batchId;
+  final int exportedQuantity;
+  final int remainingQuantity;
+
+  const InventoryExportBatch({
+    required this.batchId,
+    required this.exportedQuantity,
+    required this.remainingQuantity,
+  });
+
+  factory InventoryExportBatch.fromJson(Map<String, dynamic> json) {
+    return InventoryExportBatch(
+      batchId: InventoryBatchResponse._parseInt(json['batchId']) ?? 0,
+      exportedQuantity:
+          InventoryBatchResponse._parseInt(json['exportedQuantity']) ?? 0,
+      remainingQuantity:
+          InventoryBatchResponse._parseInt(json['remainingQuantity']) ?? 0,
     );
   }
 }
