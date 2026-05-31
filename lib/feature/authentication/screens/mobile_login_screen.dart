@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smartlogisticssystem/feature/authentication/auth_service/auth_service.dart';
 import 'package:smartlogisticssystem/feature/driver/driver_screens/driver_register_screen.dart';
+import 'package:smartlogisticssystem/feature/driver/driver_screens/driver_screen.dart';
+import 'package:smartlogisticssystem/feature/staff/staff_screens/staff_screen.dart';
 
 class MobileLoginScreen extends StatefulWidget {
   const MobileLoginScreen({super.key});
@@ -39,24 +41,28 @@ class _MobileLoginScreenState extends State<MobileLoginScreen> {
       int roleId = loginResult['roleId']!;
       int userId = loginResult['userId']!;
 
-      // KIỂM TRA PHÂN QUYỀN THIẾT BỊ (DRIVER MỚI ĐƯỢC VÀO MOBILE)
-      if (roleId == 3) {
+      // KIỂM TRA PHÂN QUYỀN THIẾT BỊ (DRIVER VÀ STAFF ĐƯỢC VÀO MOBILE)
+      if (roleId == 3 || roleId == 4) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setInt('roleId', roleId);
         await prefs.setInt('userId', userId);
 
         if (mounted) {
-          // Điều hướng vào màn hình chính của Tài xế (Do Đức làm ở Checkpoint tiếp theo)
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const Scaffold(
-                body: Center(
-                  child: Text('Màn hình Map Tracking GPS của Tài xế (Đức làm)'),
-                ),
+          if (roleId == 3) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const DriverScreen(),
               ),
-            ),
-          );
+            );
+          } else {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const StaffScreen(),
+              ),
+            );
+          }
         }
       } else {
         // CHẶN ADMIN HOẶC THỦ KHO ĐĂNG NHẬP TRÊN MOBILE

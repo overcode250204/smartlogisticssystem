@@ -8,6 +8,7 @@ class AppColors {
   static const success = Color(0xFF059669); // emerald 600 - safe green for light theme
   static const warning = Color(0xFFD97706); // amber 600 - rich orange-brown for readability
   static const danger = Color(0xFFDC2626); // red 600 - crisp red
+  static const info = Color(0xFF3B82F6); // blue 500 - informational
   static const textPrimary = Color(0xFF0F172A); // slate 900 - very premium primary text
   static const textSecondary = Color(0xFF475569); // slate 600 - professional secondary text
   static const border = Color(0xFFE2E8F0); // slate 200 - clean border line

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:smartlogisticssystem/core/app_theme.dart';
+import 'package:smartlogisticssystem/data/model/inventory_batch_status.dart';
 import 'package:smartlogisticssystem/data/model/inventory_batch_response_model.dart';
 import 'package:smartlogisticssystem/data/model/inventory_batch_request_model.dart';
 import 'package:smartlogisticssystem/data/model/product_response_model.dart';
 import 'package:smartlogisticssystem/feature/inventory/services/inventory_batch_service.dart';
-import 'package:smartlogisticssystem/feature/inventory/widgets/api_error_message.dart';
+import 'package:smartlogisticssystem/widgets/api_error_message.dart';
 import 'package:smartlogisticssystem/feature/product/product_service/product_service.dart';
 import 'package:smartlogisticssystem/widgets/dashboard_widgets.dart';
 
@@ -29,6 +30,7 @@ class _ImportPageState extends State<ImportPage> {
   List<ProductResponse> _products = [];
   List<InventoryBatchResponse> _batches = [];
   ProductResponse? _selectedProduct;
+  int? _confirmingBatchId;
 
   DateTime _importDate = DateTime.now();
   DateTime? _expirationDate;
@@ -36,6 +38,7 @@ class _ImportPageState extends State<ImportPage> {
   bool _isLoading = true;
   bool _isSubmitting = false;
   String? _errorMessage;
+  bool _received = false;
 
   @override
   void initState() {
@@ -169,7 +172,7 @@ class _ImportPageState extends State<ImportPage> {
         remainingQuantity: quantity,
         importDate: _importDate,
         expirationDate: _expirationDate!,
-        status: 'Good',
+        received: _received,
       );
 
       await _batchService.createBatch(batch);
@@ -186,11 +189,12 @@ class _ImportPageState extends State<ImportPage> {
       _noteController.clear();
       _expirationDate = null;
       _expirationDateController.clear();
+      _received = false;
       _formKey.currentState?.reset();
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Tạo lô hàng nhập thành công'),
+          content: Text('Tạo mã vạch lô hàng thành công'),
           backgroundColor: AppColors.success,
         ),
       );
@@ -203,6 +207,85 @@ class _ImportPageState extends State<ImportPage> {
       if (mounted) {
         setState(() {
           _isSubmitting = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _confirmReceived(int batchId) async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.card,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: AppColors.border),
+        ),
+        title: const Text(
+          'Xác nhận nhận hàng',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: const Text(
+          'Bạn chắc chắn đã nhận lô hàng này?',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text(
+              'Hủy',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.success,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Xác nhận'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !mounted) return;
+
+    setState(() {
+      _confirmingBatchId = batchId;
+    });
+
+    try {
+      await _batchService.confirmReceived(batchId);
+      final newBatches = await _batchService.getAllBatches();
+
+      if (!mounted) return;
+
+      setState(() {
+        _batches = newBatches;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Xác nhận nhận hàng thành công'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Lỗi: ${apiErrorMessage(error)}'),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _confirmingBatchId = null;
         });
       }
     }
@@ -233,7 +316,7 @@ class _ImportPageState extends State<ImportPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SectionTitle('Tạo lô hàng nhập'),
+                  const SectionTitle('Tạo mã vạch lô hàng'),
                   const SizedBox(height: 18),
                   Wrap(
                     spacing: 16,
@@ -290,7 +373,7 @@ class _ImportPageState extends State<ImportPage> {
                           readOnly: true,
                           enabled: !_isSubmitting,
                           decoration: const InputDecoration(
-                            labelText: 'Ngày nhập',
+                            labelText: 'Ngày tạo',
                             prefixIcon: Icon(Icons.calendar_month_outlined),
                           ),
                           onTap: _isSubmitting ? null : _pickImportDate,
@@ -309,6 +392,7 @@ class _ImportPageState extends State<ImportPage> {
                           validator: _expirationValidator,
                         ),
                       ),
+
                       _FieldBox(
                         width: 616,
                         child: TextFormField(
@@ -317,6 +401,44 @@ class _ImportPageState extends State<ImportPage> {
                           decoration: const InputDecoration(
                             labelText: 'Ghi chú',
                             prefixIcon: Icon(Icons.notes_outlined),
+                          ),
+                        ),
+                      ),
+                      _FieldBox(
+                        child: InkWell(
+                          onTap: _isSubmitting
+                              ? null
+                              : () {
+                                  setState(() {
+                                    _received = !_received;
+                                  });
+                                },
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            height: 56, // Match standard input height
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Checkbox(
+                                  value: _received,
+                                  onChanged: _isSubmitting
+                                      ? null
+                                      : (value) {
+                                          setState(() {
+                                            _received = value ?? false;
+                                          });
+                                        },
+                                ),
+                                const SizedBox(width: 8),
+                                const Text('Đã nhận', style: TextStyle(color: AppColors.textPrimary)),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -335,10 +457,8 @@ class _ImportPageState extends State<ImportPage> {
                             height: 16,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Icon(Icons.add_box_outlined),
-                    label: Text(
-                      _isSubmitting ? 'Đang tạo...' : 'Tạo lô hàng nhập',
-                    ),
+                        : const Icon(Icons.qr_code_scanner),
+                    label: Text(_isSubmitting ? 'Đang tạo...' : 'Tạo mã vạch'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
@@ -353,33 +473,102 @@ class _ImportPageState extends State<ImportPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SectionTitle('Lịch sử nhập hàng gần đây'),
+                const SectionTitle('Lịch sử tạo mã vạch gần đây'),
                 const SizedBox(height: 12),
                 DarkTable(
                   columns: const [
                     DataColumn(label: Text('Mã lô')),
                     DataColumn(label: Text('Sản phẩm')),
                     DataColumn(label: Text('Số lượng')),
-                    DataColumn(label: Text('Ngày nhập')),
-                    DataColumn(label: Text('Trạng thái')),
+                    DataColumn(label: Text('Ngày tạo')),
+                    DataColumn(label: Text('Đã nhận')),
                   ],
-                  rows: (_batches.toList()
-                        ..sort((a, b) => b.importDate.compareTo(a.importDate)))
-                      .take(5)
-                      .map(
-                        (batch) => DataRow(
-                          cells: [
-                            DataCell(Text('LH${batch.batchId ?? ''}')),
-                            DataCell(Text((batch.product?.productName ?? "") ?? '')),
-                            DataCell(Text(batch.quantity.toString())),
-                            DataCell(
-                              Text(dateFormatter.format(batch.importDate)),
+                  rows:
+                      (_batches.toList()..sort(
+                            (a, b) => b.importDate.compareTo(a.importDate),
+                          ))
+                          .take(5)
+                          .map(
+                            (batch) => DataRow(
+                              cells: [
+                                DataCell(Text('LH${batch.batchId ?? ''}')),
+                                DataCell(
+                                  Text(
+                                    (batch.product?.productName ?? "") ?? '',
+                                  ),
+                                ),
+                                DataCell(Text(batch.quantity.toString())),
+                                DataCell(
+                                  Text(dateFormatter.format(batch.importDate)),
+                                ),
+                                DataCell(
+                                  batch.received
+                                      ? Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 6,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.textSecondary.withValues(alpha: 0.12),
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: Border.all(
+                                              color: AppColors.textSecondary.withValues(alpha: 0.3),
+                                            ),
+                                          ),
+                                          child: const Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.check_circle,
+                                                color: AppColors.textSecondary,
+                                                size: 16,
+                                              ),
+                                              SizedBox(width: 4),
+                                              Text(
+                                                'Đã nhận',
+                                                style: TextStyle(
+                                                  color: AppColors.textSecondary,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        )
+                                      : ElevatedButton.icon(
+                                          onPressed: _confirmingBatchId != null
+                                              ? null
+                                              : () => _confirmReceived(batch.batchId),
+                                          icon: _confirmingBatchId == batch.batchId
+                                              ? const SizedBox(
+                                                  width: 14,
+                                                  height: 14,
+                                                  child: CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    color: Colors.white,
+                                                  ),
+                                                )
+                                              : const Icon(Icons.check, size: 14),
+                                          label: const Text('Xác nhận'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: AppColors.success,
+                                            foregroundColor: Colors.white,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 8,
+                                            ),
+                                            minimumSize: Size.zero,
+                                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(6),
+                                            ),
+                                          ),
+                                        ),
+                                ),
+                              ],
                             ),
-                            DataCell(StatusPill.batch(batch.status)),
-                          ],
-                        ),
-                      )
-                      .toList(),
+                          )
+                          .toList(),
                 ),
               ],
             ),
@@ -411,7 +600,7 @@ class _ImportErrorState extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             const Text(
-              'Không thể tải dữ liệu nhập hàng',
+              'Không thể tải dữ liệu',
               style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 18,

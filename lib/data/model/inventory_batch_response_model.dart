@@ -1,4 +1,5 @@
 import 'product_response_model.dart';
+import 'inventory_batch_status.dart';
 
 class InventoryBatchResponse {
   final int batchId;
@@ -9,7 +10,9 @@ class InventoryBatchResponse {
   final DateTime expirationDate;
   final int quantity;
   final int remainingQuantity;
-  final String status;
+  final InventoryBatchStatus status;
+  final bool received;
+  final DateTime? receivedAt;
 
   const InventoryBatchResponse({
     required this.batchId,
@@ -21,6 +24,8 @@ class InventoryBatchResponse {
     required this.quantity,
     required this.remainingQuantity,
     required this.status,
+    this.received = false,
+    this.receivedAt,
   });
 
   factory InventoryBatchResponse.fromJson(Map<String, dynamic> json) {
@@ -35,7 +40,9 @@ class InventoryBatchResponse {
       expirationDate: _parseDateTime(json['expirationDate']) ?? DateTime.now(),
       quantity: json['quantity'] as int? ?? 0,
       remainingQuantity: json['remainingQuantity'] as int? ?? 0,
-      status: json['status']?.toString() ?? 'Good',
+      status: InventoryBatchStatusX.fromApiValue(json['status']?.toString() ?? 'GOOD'),
+      received: json['received'] as bool? ?? false,
+      receivedAt: _parseDateTime(json['receivedAt']),
     );
   }
 
@@ -57,7 +64,7 @@ class InventoryBatchSimpleResponse {
   final int batchId;
   final String? productName;
   final int remainingQuantity;
-  final String status;
+  final InventoryBatchStatus status;
 
   const InventoryBatchSimpleResponse({
     required this.batchId,
@@ -72,7 +79,7 @@ class InventoryBatchSimpleResponse {
       productName: json['productName']?.toString() ??
           json['product']?['productName']?.toString(),
       remainingQuantity: json['remainingQuantity'] as int? ?? 0,
-      status: json['status']?.toString() ?? 'Good',
+      status: InventoryBatchStatusX.fromApiValue(json['status']?.toString() ?? 'GOOD'),
     );
   }
 }
@@ -131,6 +138,53 @@ class InventoryExportBatch {
           InventoryBatchResponse._parseInt(json['exportedQuantity']) ?? 0,
       remainingQuantity:
           InventoryBatchResponse._parseInt(json['remainingQuantity']) ?? 0,
+    );
+  }
+}
+
+class InventoryBatchBarcodeResponse {
+  final int batchId;
+  final String barcode;
+  final String? barcodeImageUrl;
+  final int? productId;
+  final String? productName;
+  final DateTime importDate;
+  final DateTime expirationDate;
+  final int quantity;
+  final int remainingQuantity;
+  final InventoryBatchStatus status;
+  final bool received;
+  final DateTime? receivedAt;
+
+  const InventoryBatchBarcodeResponse({
+    required this.batchId,
+    required this.barcode,
+    this.barcodeImageUrl,
+    this.productId,
+    this.productName,
+    required this.importDate,
+    required this.expirationDate,
+    required this.quantity,
+    required this.remainingQuantity,
+    required this.status,
+    this.received = false,
+    this.receivedAt,
+  });
+
+  factory InventoryBatchBarcodeResponse.fromJson(Map<String, dynamic> json) {
+    return InventoryBatchBarcodeResponse(
+      batchId: InventoryBatchResponse._parseInt(json['batchId']) ?? 0,
+      barcode: json['barcode']?.toString() ?? '',
+      barcodeImageUrl: json['barcodeImageUrl']?.toString(),
+      productId: InventoryBatchResponse._parseInt(json['productId']),
+      productName: json['productName']?.toString(),
+      importDate: InventoryBatchResponse._parseDateTime(json['importDate']) ?? DateTime.now(),
+      expirationDate: InventoryBatchResponse._parseDateTime(json['expirationDate']) ?? DateTime.now(),
+      quantity: InventoryBatchResponse._parseInt(json['quantity']) ?? 0,
+      remainingQuantity: InventoryBatchResponse._parseInt(json['remainingQuantity']) ?? 0,
+      status: InventoryBatchStatusX.fromApiValue(json['status']?.toString() ?? 'GOOD'),
+      received: json['received'] as bool? ?? false,
+      receivedAt: InventoryBatchResponse._parseDateTime(json['receivedAt']),
     );
   }
 }

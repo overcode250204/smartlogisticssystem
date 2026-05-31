@@ -1,25 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:smartlogisticssystem/core/auth_session.dart';
 import 'package:smartlogisticssystem/core/app_theme.dart';
 
 class SidebarItem {
   final String label;
   final String route;
   final IconData icon;
+  final Set<int>? allowedRoleIds;
 
   const SidebarItem({
     required this.label,
     required this.route,
     required this.icon,
+    this.allowedRoleIds,
   });
 }
 
 class Sidebar extends StatelessWidget {
   final String currentLocation;
+  final Future<int?> roleIdFuture;
   final ValueChanged<String> onNavigate;
 
   const Sidebar({
     super.key,
     required this.currentLocation,
+    required this.roleIdFuture,
     required this.onNavigate,
   });
 
@@ -34,8 +39,23 @@ class Sidebar extends StatelessWidget {
       route: '/inventory',
       icon: Icons.inventory_2_outlined,
     ),
-    SidebarItem(label: 'Nhập hàng', route: '/import', icon: Icons.south),
-    SidebarItem(label: 'Xuất hàng', route: '/export', icon: Icons.north),
+    SidebarItem(
+      label: 'Tạo mã vạch',
+      route: '/barcode-gen',
+      icon: Icons.qr_code_2,
+    ),
+    SidebarItem(
+      label: 'Quét mã vạch',
+      route: '/barcode-scan',
+      icon: Icons.qr_code_scanner,
+      allowedRoleIds: {AuthSession.staffRoleId},
+    ),
+    SidebarItem(
+      label: 'Xuất hàng',
+      route: '/export',
+      icon: Icons.north,
+      allowedRoleIds: {AuthSession.adminRoleId, AuthSession.managerRoleId},
+    ),
 
     SidebarItem(
       label: 'Nhà cung cấp',
@@ -58,16 +78,32 @@ class Sidebar extends StatelessWidget {
             const _SidebarLogo(),
             const SizedBox(height: 18),
             Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                itemCount: items.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 6),
-                itemBuilder: (context, index) {
-                  final item = items[index];
-                  return _SidebarTile(
-                    item: item,
-                    isActive: currentLocation == item.route,
-                    onTap: () => onNavigate(item.route),
+              child: FutureBuilder<int?>(
+                future: roleIdFuture,
+                builder: (context, snapshot) {
+                  final roleId = snapshot.data;
+                  final visibleItems = items
+                      .where(
+                        (item) =>
+                            item.allowedRoleIds == null ||
+                            (roleId != null &&
+                                item.allowedRoleIds!.contains(roleId)),
+                      )
+                      .toList();
+
+                  return ListView.separated(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    itemCount: visibleItems.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 6),
+                    itemBuilder: (context, index) {
+                      final item = visibleItems[index];
+                      return _SidebarTile(
+                        item: item,
+                        isActive: currentLocation == item.route,
+                        onTap: () => onNavigate(item.route),
+                      );
+                    },
                   );
                 },
               ),
@@ -137,9 +173,7 @@ class _SidebarTile extends StatelessWidget {
     final foreground = isActive ? Colors.white : AppColors.textSecondary;
 
     return Material(
-      color: isActive
-          ? AppColors.primary
-          : Colors.transparent,
+      color: isActive ? AppColors.primary : Colors.transparent,
       borderRadius: BorderRadius.circular(8),
       child: InkWell(
         borderRadius: BorderRadius.circular(8),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:smartlogisticssystem/core/app_theme.dart';
+import 'package:smartlogisticssystem/data/model/inventory_batch_status.dart';
 
 final currencyFormatter = NumberFormat('#,##0');
 final dateFormatter = DateFormat('dd/MM/yyyy');
@@ -110,21 +111,14 @@ class StatusPill extends StatelessWidget {
 
   const StatusPill({super.key, required this.label, required this.color});
 
-  factory StatusPill.batch(String status) {
-    final normalized = status.toLowerCase();
-    if (normalized == 'expired' || normalized == 'hết hạn') {
-      return StatusPill(label: 'Hết hạn', color: AppColors.danger);
-    }
-    if (normalized == 'low stock' || normalized == 'sắp hết hạn') {
-      return StatusPill(label: 'Sắp hết hạn', color: AppColors.warning);
-    }
-    return const StatusPill(label: 'Bình thường', color: AppColors.success);
+  factory StatusPill.batch(InventoryBatchStatus status) {
+    return StatusPill(label: status.label, color: _batchStatusColor(status));
   }
 
   factory StatusPill.transaction(String type) {
     final normalized = type.toUpperCase();
     return StatusPill(
-      label: normalized,
+      label: normalized == 'EXPORT' ? 'XUẤT KHO' : 'NHẬP KHO',
       color: normalized == 'EXPORT' ? AppColors.danger : AppColors.success,
     );
   }
@@ -146,6 +140,19 @@ class StatusPill extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+Color _batchStatusColor(InventoryBatchStatus status) {
+  switch (status) {
+    case InventoryBatchStatus.OUT_OF_STOCK:
+      return AppColors.danger;
+    case InventoryBatchStatus.EXPIRING_SOON:
+    case InventoryBatchStatus.LOW_STOCK:
+      return AppColors.warning;
+    case InventoryBatchStatus.GOOD:
+    case InventoryBatchStatus.NORMAL:
+      return AppColors.success;
   }
 }
 

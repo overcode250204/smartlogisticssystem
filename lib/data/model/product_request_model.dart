@@ -1,13 +1,11 @@
 class ProductCreateRequest {
   final int supplierId;
-  final String productCode;
   final String productName;
   final int minStockLevel;
   final double price;
 
   const ProductCreateRequest({
     required this.supplierId,
-    required this.productCode,
     required this.productName,
     required this.minStockLevel,
     required this.price,
@@ -16,7 +14,6 @@ class ProductCreateRequest {
   Map<String, dynamic> toJson() {
     return {
       'supplierId': supplierId,
-      'productCode': productCode,
       'productName': productName,
       'minStockLevel': minStockLevel,
       'price': price,

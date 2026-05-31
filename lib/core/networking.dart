@@ -1,6 +1,6 @@
 // File: lib/core/networking.dart
-import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -16,16 +16,19 @@ class ApiClient {
     }
 
     // 2. Nếu chạy trên Máy tính (Windows, macOS, Linux)
-    if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+    if (defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.macOS ||
+        defaultTargetPlatform == TargetPlatform.linux) {
       print('WindowMacOSLinux');
       return 'http://127.0.0.1:8080/api/';
     }
 
     // 3. Nếu chạy trên Điện thoại (Android, iOS)
-    if (Platform.isAndroid || Platform.isIOS) {
+    if (defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS) {
       print('clientAndroidIOS');
       // Dùng 10.0.2.2 cho Android Emulator để kết nối tới localhost của máy tính
-      return 'http://10.0.2.2:8080/api/';
+      return 'http://192.168.1.8:8080/api/';
     }
     print('DefaultDevice');
     // Mặc định an toàn
@@ -87,6 +90,14 @@ class ApiClient {
   Future<Response> put(String path, {dynamic data}) async {
     try {
       return await _dio.put(path, data: data);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<Response> patch(String path, {dynamic data}) async {
+    try {
+      return await _dio.patch(path, data: data);
     } catch (e) {
       rethrow;
     }

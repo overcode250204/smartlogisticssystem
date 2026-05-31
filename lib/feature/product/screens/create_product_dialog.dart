@@ -3,7 +3,7 @@ import 'package:smartlogisticssystem/core/app_theme.dart';
 import 'package:smartlogisticssystem/data/model/product_request_model.dart';
 import 'package:smartlogisticssystem/data/model/product_response_model.dart';
 import 'package:smartlogisticssystem/data/model/supplier_response_model.dart';
-import 'package:smartlogisticssystem/feature/inventory/widgets/api_error_message.dart';
+import 'package:smartlogisticssystem/widgets/api_error_message.dart';
 import 'package:smartlogisticssystem/feature/supplier/screens/create_supplier_dialog.dart';
 import 'package:smartlogisticssystem/feature/product/product_service/product_service.dart';
 import 'package:smartlogisticssystem/feature/supplier/service/supplier_service.dart';
@@ -17,7 +17,6 @@ class CreateProductDialog extends StatefulWidget {
 
 class _CreateProductDialogState extends State<CreateProductDialog> {
   final _formKey = GlobalKey<FormState>();
-  final _codeController = TextEditingController();
   final _nameController = TextEditingController();
   final _minStockController = TextEditingController(text: '0');
   final _priceController = TextEditingController();
@@ -38,7 +37,6 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
 
   @override
   void dispose() {
-    _codeController.dispose();
     _nameController.dispose();
     _minStockController.dispose();
     _priceController.dispose();
@@ -90,7 +88,6 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
       final product = await _productService.createProduct(
         ProductCreateRequest(
           supplierId: supplier.supplierId,
-          productCode: _codeController.text.trim(),
           productName: _nameController.text.trim(),
           minStockLevel: int.parse(_minStockController.text.trim()),
           price: double.parse(_priceController.text.trim()),
@@ -168,17 +165,6 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                             spacing: 14,
                             runSpacing: 14,
                             children: [
-                              _FieldBox(
-                                isWide: isWide,
-                                child: TextFormField(
-                                  controller: _codeController,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Product Code',
-                                    prefixIcon: Icon(Icons.qr_code_2_outlined),
-                                  ),
-                                  validator: _requiredValidator,
-                                ),
-                              ),
                               _FieldBox(
                                 isWide: isWide,
                                 child: TextFormField(

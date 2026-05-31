@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:smartlogisticssystem/core/auth_session.dart';
 import 'package:smartlogisticssystem/core/app_theme.dart';
 import 'package:smartlogisticssystem/widgets/sidebar.dart';
 import 'package:smartlogisticssystem/widgets/topbar.dart';
@@ -24,6 +25,7 @@ class AppShell extends StatelessWidget {
         children: [
           Sidebar(
             currentLocation: location,
+            roleIdFuture: AuthSession.getRoleId(),
             onNavigate: (route) {
               if (route != location) context.go(route);
             },

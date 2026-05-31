@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:smartlogisticssystem/core/app_theme.dart';
 import 'package:smartlogisticssystem/data/model/supplier_request_model.dart';
 import 'package:smartlogisticssystem/data/model/supplier_response_model.dart';
-import 'package:smartlogisticssystem/feature/inventory/widgets/api_error_message.dart';
+import 'package:smartlogisticssystem/widgets/api_error_message.dart';
 import 'package:smartlogisticssystem/widgets/dashboard_widgets.dart';
 import 'package:smartlogisticssystem/feature/supplier/screens/create_supplier_dialog.dart';
 import 'package:smartlogisticssystem/feature/supplier/service/supplier_service.dart';
@@ -304,7 +304,10 @@ class _SupplierDialogState extends State<_SupplierDialog> {
           contactPhone: _phoneController.text.trim(),
           address: _addressController.text.trim(),
         );
-        await widget.supplierService.updateSupplier(widget.supplier!.supplierId, request);
+        await widget.supplierService.updateSupplier(
+          widget.supplier!.supplierId,
+          request,
+        );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(

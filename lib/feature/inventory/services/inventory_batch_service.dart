@@ -26,6 +26,54 @@ class InventoryBatchService {
     }
   }
 
+  Future<List<InventoryBatchResponse>> getBatchesByProductId(
+    int productId,
+  ) async {
+    try {
+      final response = await _client.get('inventory-batches/product/$productId');
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data['data'];
+        return data
+            .map((item) => InventoryBatchResponse.fromJson(item))
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      print('Error in getBatchesByProductId: $e');
+      if (e is DioException) {
+        print('Response Status Code: ${e.response?.statusCode}');
+        print('Response Data: ${e.response?.data}');
+      }
+      rethrow;
+    }
+  }
+
+  Future<InventoryBatchBarcodeResponse> getBatchByBarcode(
+    String barcode,
+  ) async {
+    try {
+      final encodedBarcode = Uri.encodeComponent(barcode);
+      final response = await _client.get(
+        'inventory-batches/barcode/$encodedBarcode',
+      );
+      if (response.statusCode == 200 && response.data['data'] != null) {
+        return InventoryBatchBarcodeResponse.fromJson(response.data['data']);
+      }
+      throw DioException(
+        requestOptions: response.requestOptions,
+        response: response,
+        message: 'Không thể tra cứu mã vạch',
+      );
+    } catch (e) {
+      print('Error in getBatchByBarcode: $e');
+      if (e is DioException) {
+        print('Response Status Code: ${e.response?.statusCode}');
+        print('Response Data: ${e.response?.data}');
+      }
+      rethrow;
+    }
+  }
+
   Future<InventoryExportResponse> exportStock({
     required int productId,
     required int quantity,
@@ -73,6 +121,56 @@ class InventoryBatchService {
       );
     } catch (e) {
       print('Error in createBatch: $e');
+      if (e is DioException) {
+        print('Response Status Code: ${e.response?.statusCode}');
+        print('Response Data: ${e.response?.data}');
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> confirmReceived(int batchId) async {
+    try {
+      final response = await _client.put(
+        'inventory-batches/$batchId/received',
+      );
+      if (response.statusCode == 200) {
+        return;
+      }
+      throw DioException(
+        requestOptions: response.requestOptions,
+        response: response,
+        message: 'Không thể xác nhận nhận hàng',
+      );
+    } catch (e) {
+      print('Error in confirmReceived: $e');
+      if (e is DioException) {
+        print('Response Status Code: ${e.response?.statusCode}');
+        print('Response Data: ${e.response?.data}');
+      }
+      rethrow;
+    }
+  }
+
+  Future<InventoryBatchBarcodeResponse> deductBatchQuantity(
+    int batchId,
+    int quantity,
+  ) async {
+    try {
+      final response = await _client.patch(
+        'inventory-batches/$batchId/deduct',
+        data: {'quantity': quantity},
+      );
+      if (response.statusCode == 200 && response.data['data'] != null) {
+        return InventoryBatchBarcodeResponse.fromJson(response.data['data']);
+      }
+      throw DioException(
+        requestOptions: response.requestOptions,
+        response: response,
+        message: 'Khong the tru hang khoi lo hang',
+      );
+    } catch (e) {
+      print('Error in deductBatchQuantity: $e');
       if (e is DioException) {
         print('Response Status Code: ${e.response?.statusCode}');
         print('Response Data: ${e.response?.data}');
