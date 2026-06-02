@@ -8,7 +8,7 @@ class ApiClient {
   late final Dio _dio;
 
   // HÀM TỰ ĐỘNG CHỌN IP (MAGIC NẰM Ở ĐÂY)
-  String _getDynamicBaseUrl() {
+  static String getBaseUrl() {
     // 1. Nếu chạy trên Web
     if (kIsWeb) {
       print('clientweb');
@@ -35,11 +35,20 @@ class ApiClient {
     return 'http://10.0.2.2:8080/api/';
   }
 
+  static String getWebSocketUrl() {
+    final apiBaseUrl = getBaseUrl();
+    final backendBaseUrl = apiBaseUrl.replaceFirst(RegExp(r'/api/?$'), '');
+    final webSocketBaseUrl = backendBaseUrl
+        .replaceFirst('https://', 'wss://')
+        .replaceFirst('http://', 'ws://');
+    return '$webSocketBaseUrl/ws';
+  }
+
   ApiClient() {
     _dio = Dio(
       BaseOptions(
         // GỌI HÀM VỪA VIẾT VÀO ĐÂY
-        baseUrl: _getDynamicBaseUrl(),
+        baseUrl: getBaseUrl(),
         connectTimeout: const Duration(seconds: 15),
         receiveTimeout: const Duration(seconds: 15),
         headers: {'Content-Type': 'application/json'},

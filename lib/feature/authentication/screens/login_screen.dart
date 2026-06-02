@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -66,6 +67,15 @@ class _LoginScreenState extends State<LoginScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('roleId', roleId);
     await prefs.setInt('userId', userId);
+    await prefs.setString(
+      'fullName',
+      loginResult['fullName']?.toString() ?? '',
+    );
+    await prefs.setString('email', loginResult['email']?.toString() ?? '');
+    await prefs.setString(
+      'roleName',
+      loginResult['roleName']?.toString() ?? '',
+    );
 
     if (!mounted) return;
 

@@ -45,6 +45,7 @@ dependencies:
   fl_chart: ^0.68.0
   intl: ^0.19.0
   mobile_scanner: ^7.2.0
+  stomp_dart_client: ^3.0.1
 
 dev_dependencies:
   flutter_test:

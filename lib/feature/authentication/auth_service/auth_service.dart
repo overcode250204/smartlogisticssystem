@@ -6,7 +6,7 @@ import 'package:smartlogisticssystem/data/model/user_model.dart';
 class AuthService {
   final ApiClient _client = ApiClient();
 
-  Future<Map<String, int>?> login(String email, String password) async {
+  Future<Map<String, dynamic>?> login(String email, String password) async {
     try {
       final response = await _client.post(
         'auth/login',
@@ -24,6 +24,9 @@ class AuthService {
         return {
           'roleId': _parseInt(userData['roleId']),
           'userId': _parseInt(userData['userId']),
+          'fullName': userData['fullName']?.toString() ?? '',
+          'email': userData['email']?.toString() ?? email,
+          'roleName': userData['roleName']?.toString() ?? '',
         };
       }
 

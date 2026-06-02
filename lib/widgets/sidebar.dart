@@ -20,12 +20,14 @@ class Sidebar extends StatelessWidget {
   final String currentLocation;
   final Future<int?> roleIdFuture;
   final ValueChanged<String> onNavigate;
+  final Future<void> Function()? onLogout;
 
   const Sidebar({
     super.key,
     required this.currentLocation,
     required this.roleIdFuture,
     required this.onNavigate,
+    this.onLogout,
   });
 
   static const items = [
@@ -56,7 +58,6 @@ class Sidebar extends StatelessWidget {
       icon: Icons.north,
       allowedRoleIds: {AuthSession.adminRoleId, AuthSession.managerRoleId},
     ),
-
     SidebarItem(
       label: 'Nhà cung cấp',
       route: '/suppliers',
@@ -108,7 +109,7 @@ class Sidebar extends StatelessWidget {
                 },
               ),
             ),
-            const _SidebarUser(),
+            _SidebarUser(onLogout: onLogout),
           ],
         ),
       ),
@@ -208,60 +209,196 @@ class _SidebarTile extends StatelessWidget {
 }
 
 class _SidebarUser extends StatelessWidget {
-  const _SidebarUser();
+  final Future<void> Function()? onLogout;
+
+  const _SidebarUser({required this.onLogout});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: AppColors.border)),
-      ),
-      child: Row(
-        children: [
-          const CircleAvatar(
-            radius: 20,
-            backgroundColor: Color(0xFFF1F5F9), // Very light gray background
-            child: Icon(
-              Icons.person,
-              color: Color(0xFF94A3B8), // Muted icon color
-              size: 20,
+    return FutureBuilder<SessionUser?>(
+      future: AuthSession.getCurrentUser(),
+      builder: (context, snapshot) {
+        final user = snapshot.data;
+        final displayName = user?.displayName.isNotEmpty == true
+            ? user!.displayName
+            : 'Người dùng';
+        final displayRole = user?.displayRole ?? 'Người dùng';
+
+        return Container(
+          decoration: const BoxDecoration(
+            border: Border(top: BorderSide(color: AppColors.border)),
+          ),
+          child: InkWell(
+            onTap: user == null ? null : () => _showUserMenu(context, user),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          displayName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          displayRole,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: AppColors.textSecondary.withValues(alpha: 0.7),
+                  ),
+                ],
+              ),
             ),
           ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Bảo',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                SizedBox(height: 2),
-                Text(
-                  'Quản trị viên',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
+        );
+      },
+    );
+  }
+
+  Future<void> _showUserMenu(BuildContext context, SessionUser user) async {
+    final selection = await showMenu<_UserMenuAction>(
+      context: context,
+      position: _menuPosition(context),
+      items: const [
+        PopupMenuItem(
+          value: _UserMenuAction.accountInfo,
+          child: Text('Thông tin tài khoản'),
+        ),
+        PopupMenuItem(value: _UserMenuAction.logout, child: Text('Đăng xuất')),
+      ],
+    );
+
+    if (!context.mounted || selection == null) return;
+
+    switch (selection) {
+      case _UserMenuAction.accountInfo:
+        _showAccountDialog(context, user);
+        break;
+      case _UserMenuAction.logout:
+        await _confirmLogout(context);
+        break;
+    }
+  }
+
+  RelativeRect _menuPosition(BuildContext context) {
+    final box = context.findRenderObject() as RenderBox;
+    final offset = box.localToGlobal(Offset.zero);
+
+    return RelativeRect.fromLTRB(
+      offset.dx + 16,
+      offset.dy,
+      offset.dx + box.size.width,
+      offset.dy + box.size.height,
+    );
+  }
+
+  void _showAccountDialog(BuildContext context, SessionUser user) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Thông tin tài khoản'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _AccountInfoRow(label: 'Họ tên', value: user.displayName),
+            const SizedBox(height: 10),
+            _AccountInfoRow(
+              label: 'Email',
+              value: user.email.isNotEmpty ? user.email : 'Chưa có email',
             ),
-          ),
-          Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: AppColors.textSecondary.withValues(alpha: 0.7),
+            const SizedBox(height: 10),
+            _AccountInfoRow(label: 'Vai trò', value: user.displayRole),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Đóng'),
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _confirmLogout(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Đăng xuất'),
+        content: const Text('Bạn có chắc chắn muốn đăng xuất không?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.danger,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Đăng xuất'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && onLogout != null) {
+      await onLogout!();
+    }
+  }
+}
+
+enum _UserMenuAction { accountInfo, logout }
+
+class _AccountInfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _AccountInfoRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: const TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
     );
   }
 }
