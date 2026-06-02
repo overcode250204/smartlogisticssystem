@@ -16,13 +16,11 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final AuthService _authService = AuthService();
 
-  // Controllers cho các ô nhập liệu
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _idCardController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  // THÊM 2 CONTROLLER MỚI CHO QUÊ QUÁN VÀ ĐỊA CHỈ
   final TextEditingController _originController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
 
@@ -52,7 +50,6 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
     return result;
   }
 
-  // HÀM VŨ KHÍ MỚI: CHẶT BỎ TIÊU ĐỀ BẤT CHẤP SAI CHÍNH TẢ
   String _extractValueAfterKeyword(String rawLine, List<String> keywords) {
     String lowerLine = rawLine.toLowerCase();
     int lastIndex = -1;
@@ -60,12 +57,10 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
       int idx = lowerLine.lastIndexOf(kw.toLowerCase());
       if (idx != -1) {
         int endIdx = idx + kw.length;
-        if (endIdx > lastIndex)
-          lastIndex = endIdx; // Tìm vị trí của từ khóa nằm cuối cùng nhất
+        if (endIdx > lastIndex) lastIndex = endIdx;
       }
     }
     if (lastIndex != -1) {
-      // Cắt lấy phần sau từ khóa, và gọt bỏ các dấu :, /, l thừa thãi
       String value = rawLine.substring(lastIndex);
       return value.replaceAll(RegExp(r'^[\s:;\|l\/]+'), '').trim();
     }
