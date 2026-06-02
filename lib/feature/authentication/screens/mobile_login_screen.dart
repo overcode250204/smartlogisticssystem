@@ -30,7 +30,7 @@ class _MobileLoginScreenState extends State<MobileLoginScreen> {
       _errorMessage = '';
     });
 
-    Map<String, int>? loginResult = await _authService.login(
+    Map<String, dynamic>? loginResult = await _authService.login(
       _emailController.text.trim(),
       _passwordController.text.trim(),
     );
@@ -46,21 +46,26 @@ class _MobileLoginScreenState extends State<MobileLoginScreen> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setInt('roleId', roleId);
         await prefs.setInt('userId', userId);
+        await prefs.setString(
+          'fullName',
+          loginResult['fullName']?.toString() ?? '',
+        );
+        await prefs.setString('email', loginResult['email']?.toString() ?? '');
+        await prefs.setString(
+          'roleName',
+          loginResult['roleName']?.toString() ?? '',
+        );
 
         if (mounted) {
           if (roleId == 3) {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(
-                builder: (context) => const DriverScreen(),
-              ),
+              MaterialPageRoute(builder: (context) => const DriverScreen()),
             );
           } else {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(
-                builder: (context) => const StaffScreen(),
-              ),
+              MaterialPageRoute(builder: (context) => const StaffScreen()),
             );
           }
         }

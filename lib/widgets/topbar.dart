@@ -3,18 +3,27 @@ import 'package:smartlogisticssystem/core/app_theme.dart';
 
 class TopBar extends StatelessWidget {
   final String title;
+  final int notificationCount;
   final VoidCallback? onMenuPressed;
+  final VoidCallback? onNotificationPressed;
 
-  const TopBar({super.key, required this.title, this.onMenuPressed});
+  const TopBar({
+    super.key,
+    required this.title,
+    this.notificationCount = 0,
+    this.onMenuPressed,
+    this.onNotificationPressed,
+  });
+
+  String get _badgeText =>
+      notificationCount > 99 ? '99+' : notificationCount.toString();
 
   @override
   Widget build(BuildContext context) {
     return Container(
       height: 70,
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      decoration: const BoxDecoration(
-        color: AppColors.primary, // Solid primary indigo color
-      ),
+      decoration: const BoxDecoration(color: AppColors.primary),
       child: Row(
         children: [
           IconButton(
@@ -40,34 +49,37 @@ class TopBar extends StatelessWidget {
             children: [
               IconButton(
                 tooltip: 'Thông báo',
-                onPressed: () {},
+                onPressed: onNotificationPressed,
                 icon: const Icon(
                   Icons.notifications_none_rounded,
                   color: Colors.white,
                 ),
               ),
-              Positioned(
-                right: 8,
-                top: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 5,
-                    vertical: 1,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.danger,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: const Text(
-                    '3',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
+              if (notificationCount > 0)
+                Positioned(
+                  right: 6,
+                  top: 6,
+                  child: Container(
+                    constraints: const BoxConstraints(minWidth: 16),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 1,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.danger,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      _badgeText,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
           const SizedBox(width: 12),
