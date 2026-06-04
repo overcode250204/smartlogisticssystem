@@ -64,29 +64,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final roleId = loginResult['roleId']!;
     final userId = loginResult['userId']!;
-<<<<<<< HEAD
-    final fullName = loginResult['fullName']?.toString() ?? 'Người dùng';
-    final roleName = loginResult['roleName']?.toString() ?? 'N/A';
-    
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('roleId', roleId);
     await prefs.setInt('userId', userId);
-    await prefs.setString('fullName', fullName);
-    await prefs.setString('roleName', roleName);
-=======
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('roleId', roleId);
-    await prefs.setInt('userId', userId);
-    await prefs.setString(
-      'fullName',
-      loginResult['fullName']?.toString() ?? '',
-    );
+    await prefs.setString('fullName', loginResult['fullName']?.toString() ?? 'Người dùng');
     await prefs.setString('email', loginResult['email']?.toString() ?? '');
-    await prefs.setString(
-      'roleName',
-      loginResult['roleName']?.toString() ?? '',
-    );
->>>>>>> 4725fafdc1786052c4f47eb198e47ab8eeebbcda
+    await prefs.setString('roleName', loginResult['roleName']?.toString() ?? 'N/A');
 
     if (!mounted) return;
 
@@ -98,30 +81,19 @@ class _LoginScreenState extends State<LoginScreen> {
         });
         await _authService.logout();
       } else {
-<<<<<<< HEAD
-        // Admin -> Dashboard, Manager -> Quản lý kho
+        // Admin -> Users, Manager -> Dashboard
         if (roleId == 1) {
-          context.go('/users', extra: roleId);
+          context.go('/users');
         } else {
           context.go('/dashboard');
         }
-=======
-        context.go('/inventory');
->>>>>>> 4725fafdc1786052c4f47eb198e47ab8eeebbcda
       }
       return;
     }
 
     if (roleId == 3) {
       if (_isMobile) {
-<<<<<<< HEAD
         context.go('/driver');
-=======
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const DriverScreen()),
-        );
->>>>>>> 4725fafdc1786052c4f47eb198e47ab8eeebbcda
       } else {
         setState(() {
           _errorMessage = 'Tài xế vui lòng đăng nhập trên ứng dụng Mobile.';
@@ -132,14 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     if (roleId == 4) {
-<<<<<<< HEAD
       context.go('/staff');
-=======
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const StaffScreen()),
-      );
->>>>>>> 4725fafdc1786052c4f47eb198e47ab8eeebbcda
       return;
     }
 

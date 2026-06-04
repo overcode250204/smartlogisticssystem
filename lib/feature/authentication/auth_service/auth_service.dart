@@ -1,8 +1,5 @@
 import 'package:dio/dio.dart';
-<<<<<<< HEAD
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-=======
->>>>>>> 4725fafdc1786052c4f47eb198e47ab8eeebbcda
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smartlogisticssystem/core/networking.dart';
 import 'package:smartlogisticssystem/data/model/user_model.dart';
@@ -11,7 +8,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 class AuthService {
   final ApiClient _client = ApiClient();
 
-<<<<<<< HEAD
   final String _firebaseApiKey = dotenv.env['FIREBASE_API_KEY'] ?? '';
 
   FirebaseAuth get _firebaseAuth => FirebaseAuth.instance;
@@ -20,12 +16,6 @@ class AuthService {
     try {
       final response = await _client.post(
         'auth/v1/login',
-=======
-  Future<Map<String, dynamic>?> login(String email, String password) async {
-    try {
-      final response = await _client.post(
-        'auth/login',
->>>>>>> 4725fafdc1786052c4f47eb198e47ab8eeebbcda
         data: {'email': email, 'password': password},
       );
 
@@ -40,14 +30,9 @@ class AuthService {
         return {
           'roleId': _parseInt(userData['roleId']),
           'userId': _parseInt(userData['userId']),
-<<<<<<< HEAD
-          'fullName': userData['fullName'],
-          'roleName': userData['roleName'],
-=======
           'fullName': userData['fullName']?.toString() ?? '',
           'email': userData['email']?.toString() ?? email,
           'roleName': userData['roleName']?.toString() ?? '',
->>>>>>> 4725fafdc1786052c4f47eb198e47ab8eeebbcda
         };
       }
 
@@ -95,7 +80,6 @@ class AuthService {
     if (value is num) return value.toInt();
     return int.parse(value.toString());
   }
-<<<<<<< HEAD
 
   Future<Map<String, dynamic>?> loginWithFirebase(
     String email,
@@ -122,6 +106,7 @@ class AuthService {
       print(e.toString());
       return null;
     }
+    return null;
   }
 
   Future<String?> sendOtpToPhone(String phoneNumber) async {
@@ -173,6 +158,7 @@ class AuthService {
       print(e.toString());
       return null;
     }
+    return null;
   }
 
   Future<void> sendOtpToRealPhone({
@@ -245,6 +231,5 @@ class AuthService {
       return null;
     }
   }
-=======
->>>>>>> 4725fafdc1786052c4f47eb198e47ab8eeebbcda
+}
 }
