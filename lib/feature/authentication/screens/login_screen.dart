@@ -1,12 +1,12 @@
-import 'dart:io';
-
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smartlogisticssystem/feature/authentication/auth_service/auth_service.dart';
 import 'package:smartlogisticssystem/feature/driver/driver_screens/driver_register_screen.dart';
 import 'package:smartlogisticssystem/feature/driver/driver_screens/driver_screen.dart';
-import 'package:smartlogisticssystem/feature/user/screens/user_screens.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:smartlogisticssystem/feature/staff/staff_screens/staff_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,122 +18,121 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-
   final _formValidate = GlobalKey<FormState>();
-
   final AuthService _authService = AuthService();
 
   bool _isLoading = false;
   String _errorMessage = '';
 
-  void _handleLogin() async {
-    if (!_formValidate.currentState!.validate()) {
-      return;
-    }
+  bool get _isMobile =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleLogin() async {
+    if (!_formValidate.currentState!.validate()) return;
 
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
 
-    Map<String, int>? loginResult = await _authService.login(
+    final loginResult = await _authService.login(
       _emailController.text.trim(),
       _passwordController.text.trim(),
     );
+
+    if (!mounted) return;
 
     setState(() {
       _isLoading = false;
     });
 
-    if (loginResult != null) {
-      int roleId = loginResult['roleId']!;
-      int userId = loginResult['userId']!;
-
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('roleId', roleId);
-      await prefs.setInt('userId', userId);
-
-      // KIỂM TRA THIẾT BỊ ĐANG CHẠY LÀ GÌ?
-      // kIsWeb là false (nghĩa là ko chạy trên trình duyệt) VÀ chạy trên Android hoặc iOS
-      bool isMobile = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
-
-      if (roleId == 1 || roleId == 2) {
-        // ==========================================
-        // NHÓM QUẢN TRỊ (ADMIN = 1, THỦ KHO = 2)
-        // ==========================================
-        if (isMobile) {
-          setState(() {
-            _errorMessage =
-                'Tài khoản quản trị. Vui lòng đăng nhập trên máy tính Desktop!';
-          });
-          await _authService.logout(); // Xóa phiên đăng nhập sai thiết bị
-        } else {
-          // HỢP LỆ: Đang dùng Desktop
-          if (mounted) {
-            if (roleId == 1) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => UserListScreen(currentRoleId: roleId),
-                ),
-              );
-            } else {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const Scaffold(
-                    body: Center(child: Text('Màn hình Quản lý Kho của Bảo')),
-                  ),
-                ),
-              );
-            }
-          }
-        }
-      } else if (roleId == 3) {
-        if (isMobile) {
-          if (isMobile) {
-            if (mounted) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const DriverScreen()),
-              );
-            }
-          }
-        } else {
-          setState(() {
-            _errorMessage = 'Tài xế vui lòng đăng nhập trên ứng dụng Mobile.';
-          });
-          await _authService.logout();
-        }
-      } else {
-        setState(() {
-          _errorMessage = 'Quyền truy cập không hợp lệ!';
-        });
-      }
-    } else {
+    if (loginResult == null) {
       setState(() {
         _errorMessage = 'Email hoặc mật khẩu không chính xác!';
       });
+      return;
     }
+
+    final roleId = loginResult['roleId']!;
+    final userId = loginResult['userId']!;
+    final fullName = loginResult['fullName']?.toString() ?? 'Người dùng';
+    final roleName = loginResult['roleName']?.toString() ?? 'N/A';
+    
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('roleId', roleId);
+    await prefs.setInt('userId', userId);
+    await prefs.setString('fullName', fullName);
+    await prefs.setString('roleName', roleName);
+
+    if (!mounted) return;
+
+    if (roleId == 1 || roleId == 2) {
+      if (_isMobile) {
+        setState(() {
+          _errorMessage =
+              'Tài khoản quản trị. Vui lòng đăng nhập trên máy tính Desktop!';
+        });
+        await _authService.logout();
+      } else {
+        // Admin -> Dashboard, Manager -> Quản lý kho
+        if (roleId == 1) {
+          context.go('/users', extra: roleId);
+        } else {
+          context.go('/dashboard');
+        }
+      }
+      return;
+    }
+
+    if (roleId == 3) {
+      if (_isMobile) {
+        context.go('/driver');
+      } else {
+        setState(() {
+          _errorMessage = 'Tài xế vui lòng đăng nhập trên ứng dụng Mobile.';
+        });
+        await _authService.logout();
+      }
+      return;
+    }
+
+    if (roleId == 4) {
+      context.go('/staff');
+      return;
+    }
+
+    setState(() {
+      _errorMessage = 'Quyền truy cập không hợp lệ!';
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    bool isMobile = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
     return Scaffold(
       backgroundColor: Colors.grey[200],
       body: Center(
         child: Container(
           width: 400,
-          padding: const EdgeInsets.all(32.0),
+          padding: const EdgeInsets.all(32),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 10,
+              ),
             ],
           ),
-          // 2. BỌC COLUMN TRONG FORM
           child: Form(
             key: _formValidate,
             child: Column(
@@ -144,8 +143,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 32),
-
-                // 3. ĐỔI THÀNH TextFormField ĐỂ KIỂM TRA EMAIL
                 TextFormField(
                   controller: _emailController,
                   decoration: const InputDecoration(
@@ -158,7 +155,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       return 'Vui lòng nhập email';
                     }
                     final emailRegex = RegExp(
-                      r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                      r'^[\w.-]+@([\w-]+\.)+[\w-]{2,}$',
                     );
                     if (!emailRegex.hasMatch(value.trim())) {
                       return 'Email không đúng định dạng';
@@ -167,8 +164,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
-
-                // 4. ĐỔI THÀNH TextFormField ĐỂ KIỂM TRA MẬT KHẨU
                 TextFormField(
                   controller: _passwordController,
                   obscureText: true,
@@ -188,16 +183,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
-
                 if (_errorMessage.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 16),
                     child: Text(
                       _errorMessage,
                       style: const TextStyle(color: Colors.red),
+                      textAlign: TextAlign.center,
                     ),
                   ),
-
                 SizedBox(
                   width: double.infinity,
                   height: 48,
@@ -211,7 +205,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                   ),
                 ),
-                if (isMobile) ...[
+                if (_isMobile) ...[
                   const SizedBox(height: 16),
                   TextButton(
                     onPressed: () {

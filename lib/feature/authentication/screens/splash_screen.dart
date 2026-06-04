@@ -1,11 +1,10 @@
-// File: lib/features/auth_nguyen/splash_screen.dart
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// THAY ĐỔI ĐƯỜNG DẪN IMPORT CHO ĐÚNG VỚI MÁY CỦA BẠN:
-import 'package:smartlogisticssystem/feature/authentication/screens/login_screen.dart';
-import 'package:smartlogisticssystem/feature/driver/driver_screens/driver_screen.dart';
-import 'package:smartlogisticssystem/feature/user/screens/user_screens.dart';
+
+
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -15,6 +14,13 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  
+  // Hàm kiểm tra xem thiết bị hiện tại có phải là Mobile (Android/iOS) hay không
+  bool get _isMobile =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
+
   @override
   void initState() {
     super.initState();
@@ -29,41 +35,29 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (!mounted) return;
 
+
     if (roleId != null) {
       if (roleId == 1) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => UserListScreen(currentRoleId: roleId),
-          ),
-        );
+        _isMobile ? context.go('/mobile-login') : context.go('/users', extra: roleId);
       } else if (roleId == 2) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const Scaffold(
-              body: Center(child: Text('Màn hình Quản lý Kho của Bảo')),
-            ),
-          ),
-        );
+        _isMobile ? context.go('/mobile-login') : context.go('/dashboard');
       } else if (roleId == 3) {
-        // ĐÃ SỬA: Đưa vào màn hình DriverScreen có nút Logout
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const DriverScreen()),
-        );
+        _isMobile ? context.go('/driver') : context.go('/login');
+      } else if (roleId == 4) {
+        context.go('/staff');
       } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-        );
+        _navigateToLoginBasedOnDevice();
       }
     } else {
-      // ĐÃ SỬA: Chỉ cần gọi LoginScreen, bên trong file đó sẽ tự check Mobile/Desktop
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-      );
+      _navigateToLoginBasedOnDevice();
+    }
+  }
+
+  void _navigateToLoginBasedOnDevice() {
+    if (_isMobile) {
+      context.go('/mobile-login');
+    } else {
+      context.go('/login');
     }
   }
 

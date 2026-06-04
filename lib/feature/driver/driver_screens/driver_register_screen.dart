@@ -398,9 +398,7 @@ class _DriverRegisterScreenState extends State<DriverRegisterScreen> {
                                     roleName: 'Driver',
                                     phone: _phoneController.text.trim(),
                                     isActive: true,
-                                    identificationNumber: int.tryParse(
-                                      _idCardController.text.trim(),
-                                    ),
+                                    identificationNumber: _idCardController.text.trim(),
                                     password: _passwordController.text.trim(),
                                     origin: _originController.text.trim(),
                                     address: _addressController.text.trim(),

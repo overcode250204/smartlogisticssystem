@@ -6,7 +6,7 @@ class UserModel {
   final String roleName;
   final bool isActive;
   final String? password;
-  final int? identificationNumber;
+  final String? identificationNumber;
   final String? address;
   final String? origin;
   final int? roleId;
@@ -27,18 +27,26 @@ class UserModel {
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      userId: json['userId'] as int?,
+      userId: _toInt(json['userId']),
       fullName: json['fullName'] ?? '',
       email: json['email'] ?? '',
-      phone: json['phone'],
+      phone: json['phone']?.toString(),
       roleName: json['roleName'] ?? 'Unknown',
       isActive: json['isActive'] ?? true,
       password: json['password'] ?? '',
-      identificationNumber: json['identificationNumber'] as int?,
+      identificationNumber: json['identificationNumber']?.toString(),
       origin: json['origin'] ?? '',
       address: json['address'] ?? '',
-      roleId: json['roleId'] as int,
+      roleId: _toInt(json['roleId']),
     );
+  }
+
+  static int? _toInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
   }
 
   Map<String, dynamic> toJson() {

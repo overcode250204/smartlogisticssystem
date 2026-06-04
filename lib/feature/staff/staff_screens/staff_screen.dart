@@ -1,12 +1,10 @@
-// File: lib/feature/driver/driver_screens/driver_screen.dart
 import 'package:flutter/material.dart';
 import 'package:smartlogisticssystem/feature/authentication/auth_service/auth_service.dart';
-
-// SỬA ĐƯỜNG DẪN IMPORT NÀY NẾU CẦN:
+import 'package:smartlogisticssystem/feature/inventory/screens/barcode_scan_page.dart';
 import 'package:smartlogisticssystem/feature/authentication/screens/login_screen.dart';
 
-class DriverScreen extends StatelessWidget {
-  const DriverScreen({super.key});
+class StaffScreen extends StatelessWidget {
+  const StaffScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -14,11 +12,10 @@ class DriverScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Map Tracking GPS'),
+        title: const Text('Nhân viên kho'),
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
         actions: [
-          // NÚT ĐĂNG XUẤT CHO TÀI XẾ
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Đăng xuất',
@@ -39,12 +36,33 @@ class DriverScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.map, size: 100, color: Colors.grey),
+            const Icon(Icons.warehouse, size: 100, color: Colors.grey),
             const SizedBox(height: 16),
             const Text(
-              'Màn hình Map Tracking GPS của Tài xế\n(Task của Đức)',
+              'Màn hình chức năng Nhân viên kho',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 18, color: Colors.black54),
+            ),
+            const SizedBox(height: 28),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const StaffExportScanPage(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.qr_code_scanner),
+              label: const Text('Quét QR / Barcode lô hàng'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 22,
+                  vertical: 14,
+                ),
+              ),
             ),
           ],
         ),
