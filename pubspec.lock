@@ -168,6 +168,17 @@ packages:
       sha256: "3e0141505477fd8ad55d6eb4e7776d3fe8430be8e497ccb1521370c3f21a3e2b"
       url: "https://pub.dev"
     source: hosted
+<<<<<<< HEAD
+=======
+    version: "4.2.0"
+  equatable:
+    dependency: transitive
+    description:
+      name: equatable
+      sha256: "3e0141505477fd8ad55d6eb4e7776d3fe8430be8e497ccb1521370c3f21a3e2b"
+      url: "https://pub.dev"
+    source: hosted
+>>>>>>> 4725fafdc1786052c4f47eb198e47ab8eeebbcda
     version: "2.0.8"
   fake_async:
     dependency: transitive
@@ -193,6 +204,7 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "7.0.1"
+<<<<<<< HEAD
   firebase_auth:
     dependency: "direct main"
     description:
@@ -241,6 +253,8 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.8.0"
+=======
+>>>>>>> 4725fafdc1786052c4f47eb198e47ab8eeebbcda
   fl_chart:
     dependency: "direct main"
     description:
@@ -597,6 +611,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.12.1"
+  stomp_dart_client:
+    dependency: "direct main"
+    description:
+      name: stomp_dart_client
+      sha256: "54a73fd73f160a2956036fa39539e283f58535c3e84bff3a40e16003dd320123"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.0.1"
   stream_channel:
     dependency: transitive
     description:
@@ -677,6 +699,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.1"
+  web_socket:
+    dependency: transitive
+    description:
+      name: web_socket
+      sha256: "34d64019aa8e36bf9842ac014bb5d2f5586ca73df5e4d9bf5c936975cae6982c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.1"
   xdg_directories:
     dependency: transitive
     description:

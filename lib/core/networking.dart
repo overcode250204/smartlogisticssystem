@@ -8,7 +8,7 @@ class ApiClient {
   late final Dio _dio;
 
   // HÀM TỰ ĐỘNG CHỌN IP (MAGIC NẰM Ở ĐÂY)
-  String _getDynamicBaseUrl() {
+  static String getBaseUrl() {
     // 1. Nếu chạy trên Web
     if (kIsWeb) {
       print('clientweb');
@@ -28,18 +28,34 @@ class ApiClient {
         defaultTargetPlatform == TargetPlatform.iOS) {
       print('clientAndroidIOS');
       // Dùng 10.0.2.2 cho Android Emulator để kết nối tới localhost của máy tính
+<<<<<<< HEAD
       return 'http://10.0.2.2:8080/api/';
+=======
+      return 'http://192.168.1.8:8080/api/';
+>>>>>>> 4725fafdc1786052c4f47eb198e47ab8eeebbcda
     }
     print('DefaultDevice');
     // Mặc định an toàn
     return 'http://10.0.2.2:8080/api/';
+<<<<<<< HEAD
+=======
+  }
+
+  static String getWebSocketUrl() {
+    final apiBaseUrl = getBaseUrl();
+    final backendBaseUrl = apiBaseUrl.replaceFirst(RegExp(r'/api/?$'), '');
+    final webSocketBaseUrl = backendBaseUrl
+        .replaceFirst('https://', 'wss://')
+        .replaceFirst('http://', 'ws://');
+    return '$webSocketBaseUrl/ws';
+>>>>>>> 4725fafdc1786052c4f47eb198e47ab8eeebbcda
   }
 
   ApiClient() {
     _dio = Dio(
       BaseOptions(
         // GỌI HÀM VỪA VIẾT VÀO ĐÂY
-        baseUrl: _getDynamicBaseUrl(),
+        baseUrl: getBaseUrl(),
         connectTimeout: const Duration(seconds: 15),
         receiveTimeout: const Duration(seconds: 15),
         headers: {'Content-Type': 'application/json'},

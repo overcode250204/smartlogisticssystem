@@ -4,6 +4,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smartlogisticssystem/feature/authentication/auth_service/auth_service.dart';
 import 'package:smartlogisticssystem/feature/driver/driver_screens/driver_register_screen.dart';
 import 'package:smartlogisticssystem/feature/driver/driver_screens/driver_screen.dart';
+<<<<<<< HEAD
+=======
+import 'package:smartlogisticssystem/feature/staff/staff_screens/staff_screen.dart';
+>>>>>>> 4725fafdc1786052c4f47eb198e47ab8eeebbcda
 
 class MobileLoginScreen extends StatefulWidget {
   const MobileLoginScreen({super.key});
@@ -46,6 +50,7 @@ class _MobileLoginScreenState extends State<MobileLoginScreen> {
       _errorMessage = '';
     });
 
+<<<<<<< HEAD
     // 🚀 ĐÃ SỬA: Gọi hàm SDK mới để kích hoạt gửi SMS thật về máy
     await _authService.sendOtpToRealPhone(
       phoneNumber: phone,
@@ -86,6 +91,11 @@ class _MobileLoginScreenState extends State<MobileLoginScreen> {
       verificationId: _sessionInfo!,
       otpCode: otp,
       phoneNumber: phone,
+=======
+    Map<String, dynamic>? loginResult = await _authService.login(
+      _emailController.text.trim(),
+      _passwordController.text.trim(),
+>>>>>>> 4725fafdc1786052c4f47eb198e47ab8eeebbcda
     );
 
     setState(() => _isLoading = false);
@@ -95,8 +105,41 @@ class _MobileLoginScreenState extends State<MobileLoginScreen> {
       int userId = loginResult['userId']!;
       bool isActive = loginResult['isActive'] ?? false;
 
+<<<<<<< HEAD
       // Chặn nếu tài xế mới tự tạo tài khoản chưa được Quản trị viên duyệt
       if (!isActive) {
+=======
+      // KIỂM TRA PHÂN QUYỀN THIẾT BỊ (DRIVER VÀ STAFF ĐƯỢC VÀO MOBILE)
+      if (roleId == 3 || roleId == 4) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setInt('roleId', roleId);
+        await prefs.setInt('userId', userId);
+        await prefs.setString(
+          'fullName',
+          loginResult['fullName']?.toString() ?? '',
+        );
+        await prefs.setString('email', loginResult['email']?.toString() ?? '');
+        await prefs.setString(
+          'roleName',
+          loginResult['roleName']?.toString() ?? '',
+        );
+
+        if (mounted) {
+          if (roleId == 3) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const DriverScreen()),
+            );
+          } else {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const StaffScreen()),
+            );
+          }
+        }
+      } else {
+        // CHẶN ADMIN HOẶC THỦ KHO ĐĂNG NHẬP TRÊN MOBILE
+>>>>>>> 4725fafdc1786052c4f47eb198e47ab8eeebbcda
         setState(() {
           _errorMessage = 'Tài khoản tài xế đang chờ Admin phê duyệt!';
         });
