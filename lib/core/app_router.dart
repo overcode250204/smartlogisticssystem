@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smartlogisticssystem/core/auth_session.dart';
 import 'package:smartlogisticssystem/feature/authentication/screens/login_screen.dart';
+import 'package:smartlogisticssystem/feature/authentication/screens/mobile_login_screen.dart';
+import 'package:smartlogisticssystem/feature/authentication/screens/splash_screen.dart';
+import 'package:smartlogisticssystem/feature/driver/driver_screens/driver_screen.dart';
+import 'package:smartlogisticssystem/feature/staff/staff_screens/staff_screen.dart';
 import 'package:smartlogisticssystem/feature/inventory/screens/dashboard_page.dart';
 import 'package:smartlogisticssystem/feature/inventory/screens/export_page.dart';
 import 'package:smartlogisticssystem/feature/inventory/screens/import_page.dart';
@@ -10,15 +15,44 @@ import 'package:smartlogisticssystem/feature/supplier/screens/suppliers_page.dar
 import 'package:smartlogisticssystem/feature/inventory/screens/barcode_scan_page.dart';
 import 'package:smartlogisticssystem/feature/inventory/screens/staff_batch_detail_page.dart';
 import 'package:smartlogisticssystem/data/model/inventory_batch_response_model.dart';
+import 'package:smartlogisticssystem/feature/user/screens/user_screens.dart';
 import 'package:smartlogisticssystem/widgets/app_shell.dart';
 
 final appRouter = GoRouter(
-  initialLocation: '/login',
+  initialLocation: '/',
   routes: [
+    GoRoute(
+      path: '/',
+      pageBuilder: (context, state) =>
+          const NoTransitionPage(child: SplashScreen()),
+    ),
     GoRoute(
       path: '/login',
       pageBuilder: (context, state) =>
           const NoTransitionPage(child: LoginScreen()),
+    ),
+    GoRoute(
+      path: '/mobile-login',
+      pageBuilder: (context, state) =>
+          const NoTransitionPage(child: MobileLoginScreen()),
+    ),
+    GoRoute(
+      path: '/driver',
+      pageBuilder: (context, state) =>
+          const NoTransitionPage(child: DriverScreen()),
+    ),
+    GoRoute(
+      path: '/staff',
+      redirect: (context, state) async {
+        final prefs = await SharedPreferences.getInstance();
+        final roleId = prefs.getInt('roleId');
+        if (roleId != 4) {
+          return '/login'; // Only staff should access /staff
+        }
+        return null;
+      },
+      pageBuilder: (context, state) =>
+          const NoTransitionPage(child: StaffScreen()),
     ),
     ShellRoute(
       builder: (context, state, child) {
@@ -29,6 +63,22 @@ final appRouter = GoRouter(
         );
       },
       routes: [
+        GoRoute(
+          path: '/users',
+          redirect: (context, state) async {
+            final prefs = await SharedPreferences.getInstance();
+            final roleId = prefs.getInt('roleId');
+            if (roleId != 1) {
+              return '/dashboard'; // Redirect non-admins to dashboard
+            }
+            return null; // Allow access
+          },
+          pageBuilder: (context, state) {
+            return const NoTransitionPage(
+              child: UserListScreen(currentRoleId: 1),
+            );
+          },
+        ),
         GoRoute(
           path: '/dashboard',
           pageBuilder: (context, state) =>
@@ -104,6 +154,7 @@ String _titleForPath(String path) {
     '/export' => 'Xuất hàng',
     '/reports' => 'Báo cáo',
     '/suppliers' => 'Nhà cung cấp',
+    '/users' => 'Quản lý nhân sự',
     '/settings' => 'Cài đặt',
     _ => 'Smart Logistics',
   };

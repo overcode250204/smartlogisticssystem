@@ -28,7 +28,7 @@ class ApiClient {
         defaultTargetPlatform == TargetPlatform.iOS) {
       print('clientAndroidIOS');
       // Dùng 10.0.2.2 cho Android Emulator để kết nối tới localhost của máy tính
-      return 'http://192.168.1.8:8080/api/';
+      return 'http://10.0.2.2:8080/api/';
     }
     print('DefaultDevice');
     // Mặc định an toàn

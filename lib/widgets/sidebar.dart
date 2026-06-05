@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:smartlogisticssystem/core/auth_session.dart';
 import 'package:smartlogisticssystem/core/app_theme.dart';
 
@@ -35,16 +36,19 @@ class Sidebar extends StatelessWidget {
       label: 'Tổng quan',
       route: '/dashboard',
       icon: Icons.home_outlined,
+      allowedRoleIds: {AuthSession.managerRoleId},
     ),
     SidebarItem(
       label: 'Quản lý kho',
       route: '/inventory',
       icon: Icons.inventory_2_outlined,
+      allowedRoleIds: {AuthSession.managerRoleId},
     ),
     SidebarItem(
       label: 'Tạo mã vạch',
       route: '/barcode-gen',
       icon: Icons.qr_code_2,
+      allowedRoleIds: {AuthSession.managerRoleId},
     ),
     SidebarItem(
       label: 'Quét mã vạch',
@@ -62,6 +66,13 @@ class Sidebar extends StatelessWidget {
       label: 'Nhà cung cấp',
       route: '/suppliers',
       icon: Icons.groups_outlined,
+      allowedRoleIds: {AuthSession.managerRoleId},
+    ),
+    SidebarItem(
+      label: 'Quản lý nhân sự',
+      route: '/users',
+      icon: Icons.people_outline,
+      allowedRoleIds: {AuthSession.adminRoleId},
     ),
   ];
 
@@ -234,6 +245,16 @@ class _SidebarUser extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
+                  const CircleAvatar(
+                    radius: 20,
+                    backgroundColor: Color(0xFFF1F5F9),
+                    child: Icon(
+                      Icons.person,
+                      color: Color(0xFF94A3B8),
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

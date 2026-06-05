@@ -7,7 +7,7 @@ class UserService {
 
   Future<List<UserModel>> getAllUsers() async {
     try {
-      final response = await _client.get('/users');
+      final response = await _client.get('users');
 
       if (response.statusCode == 200) {
         final List<dynamic> dataList = response.data['data'];
@@ -28,10 +28,13 @@ class UserService {
     String phone,
     String password,
     int roleId,
+    String? identificationNumber,
+    String? origin,
+    String? address,
   ) async {
     try {
       final response = await _client.post(
-        '/users',
+        'users',
         data: {
           'fullName': fullName,
           'email': email,
@@ -39,6 +42,9 @@ class UserService {
           'password': password,
           'roleId': roleId,
           'isActive': true,
+          'identificationNumber': identificationNumber,
+          'origin': origin,
+          'address': address,
         },
       );
       return response.statusCode == 200;
@@ -54,15 +60,21 @@ class UserService {
     String phone,
     int roleId,
     bool isActive,
+    String? identificationNumber,
+    String? origin,
+    String? address,
   ) async {
     try {
       final response = await _client.put(
-        '/users/$userId',
+        'users/$userId',
         data: {
           'fullName': fullName,
           'phone': phone,
           'roleId': roleId,
           'isActive': isActive,
+          'identificationNumber': identificationNumber,
+          'origin': origin,
+          'address': address,
         },
       );
       return response.statusCode == 200;
@@ -75,7 +87,7 @@ class UserService {
   // 4. XÓA (MỀM)
   Future<bool> deleteUser(int userId) async {
     try {
-      final response = await _client.delete('/users/$userId');
+      final response = await _client.delete('users/$userId');
       return response.statusCode == 200;
     } catch (e) {
       print('Lỗi xóa user: $e');
@@ -98,17 +110,24 @@ class UserService {
       if (isActive != null) queryParams['isActive'] = isActive;
 
       final response = await _client.get(
-        '/users/search',
+        'users/search',
         queryParameters: queryParams,
       );
 
+      print('🔍 Search Response Content: ${response.data}');
+
       if (response.statusCode == 200) {
-        final List<dynamic> data = response.data['data'];
-        return data.map((json) => UserModel.fromJson(json)).toList();
+        final dynamic rawData = response.data['data'];
+        if (rawData is List) {
+          return rawData.map((json) => UserModel.fromJson(json)).toList();
+        } else {
+          print('⚠️ Warning: Expected data is not a List, got: ${rawData.runtimeType}');
+        }
       }
       return [];
-    } catch (e) {
-      print('Lỗi tìm kiếm users: $e');
+    } catch (e, stack) {
+      print('❌ Error searching users: $e');
+      print('Stacktrace: $stack');
       return [];
     }
   }

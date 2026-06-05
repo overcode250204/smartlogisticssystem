@@ -1,6 +1,7 @@
 // File: lib/features/auth_nguyen/user_list_screen.dart
 import 'dart:async'; // Bắt buộc phải có để dùng Timer (Debounce)
 import 'package:flutter/material.dart';
+import 'package:smartlogisticssystem/core/app_theme.dart';
 import 'package:smartlogisticssystem/data/model/user_model.dart';
 import 'package:smartlogisticssystem/feature/authentication/auth_service/auth_service.dart';
 import 'package:smartlogisticssystem/feature/authentication/screens/login_screen.dart';
@@ -33,6 +34,9 @@ class _UserListScreenState extends State<UserListScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _idCardController = TextEditingController();
+  final TextEditingController _originController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
   int _selectedRoleId = 3;
   bool _isActive = true; // Quản lý trạng thái Hoạt động/Đã nghỉ trong Form
 
@@ -50,6 +54,9 @@ class _UserListScreenState extends State<UserListScreen> {
     _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
+    _idCardController.dispose();
+    _originController.dispose();
+    _addressController.dispose();
     super.dispose();
   }
 
@@ -65,7 +72,6 @@ class _UserListScreenState extends State<UserListScreen> {
   Future<void> _performSearch() async {
     setState(() => _isLoading = true);
 
-    // Đẩy cả 3 biến xuống Backend
     final users = await _userService.searchUsers(
       keyword: _searchController.text.trim(),
       roleId: _filterRoleId,
@@ -134,6 +140,26 @@ class _UserListScreenState extends State<UserListScreen> {
   }
 
   // Hiển thị Form THÊM / SỬA
+
+  Widget _buildRoleDropdown(StateSetter setStateDialog) {
+    return DropdownButtonFormField<int>(
+      value: _selectedRoleId,
+      items: const [
+        DropdownMenuItem(value: 1, child: Text('Admin')),
+        DropdownMenuItem(
+          value: 2,
+          child: Text('WarehouseManager'),
+        ),
+        DropdownMenuItem(value: 3, child: Text('Driver')),
+      ],
+      onChanged: (val) => setStateDialog(() => _selectedRoleId = val!),
+      decoration: const InputDecoration(
+        labelText: 'Chức vụ *',
+        prefixIcon: Icon(Icons.admin_panel_settings_outlined),
+      ),
+    );
+  }
+
   void _showUserDialog({UserModel? userToEdit}) {
     showDialog(
       context: context,
@@ -144,6 +170,9 @@ class _UserListScreenState extends State<UserListScreen> {
           _nameController.text = userToEdit.fullName;
           _emailController.text = userToEdit.email ?? '';
           _phoneController.text = userToEdit.phone ?? '';
+          _idCardController.text = userToEdit.identificationNumber ?? '';
+          _originController.text = userToEdit.origin ?? '';
+          _addressController.text = userToEdit.address ?? '';
           _passwordController.clear();
           _isActive = userToEdit.isActive;
           _selectedRoleId = userToEdit.roleName == 'Admin'
@@ -153,6 +182,9 @@ class _UserListScreenState extends State<UserListScreen> {
           _nameController.clear();
           _emailController.clear();
           _phoneController.clear();
+          _idCardController.clear();
+          _originController.clear();
+          _addressController.clear();
           _passwordController.clear();
           _isActive = true;
           _selectedRoleId = 3;
@@ -161,95 +193,176 @@ class _UserListScreenState extends State<UserListScreen> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
-              title: Text(
-                userToEdit == null ? 'Thêm Nhân Sự Mới' : 'Sửa Thông Tin',
+              title: Row(
+                children: [
+                  Icon(
+                    userToEdit == null ? Icons.person_add : Icons.edit_note,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    userToEdit == null ? 'Thêm Nhân Sự Mới' : 'Sửa Thông Tin',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
               ),
-              content: SingleChildScrollView(
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      TextFormField(
-                        controller: _nameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Họ tên *',
-                        ),
-                        validator: (v) => (v == null || v.trim().length < 5)
-                            ? 'Họ tên phải từ 5 ký tự'
-                            : null,
-                      ),
-                      TextFormField(
-                        controller: _emailController,
-                        decoration: const InputDecoration(labelText: 'Email *'),
-                        enabled:
-                            userToEdit ==
-                            null, // Không cho sửa email nếu đã tồn tại
-                        validator: (v) => (v == null || !v.contains('@'))
-                            ? 'Email không hợp lệ'
-                            : null,
-                      ),
-                      TextFormField(
-                        controller: _phoneController,
-                        decoration: const InputDecoration(
-                          labelText: 'Số điện thoại *',
-                        ),
-                        validator: (v) =>
-                            (v == null || !RegExp(r'^(0)[0-9]{9}$').hasMatch(v))
-                            ? 'SDT gồm 10 số, bắt đầu bằng 0'
-                            : null,
-                      ),
-                      if (userToEdit == null)
-                        TextFormField(
-                          controller: _passwordController,
-                          decoration: const InputDecoration(
-                            labelText: 'Mật khẩu *',
+              content: SizedBox(
+                width: 600, // Tăng chiều rộng để thân thiện hơn
+                child: SingleChildScrollView(
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Thông tin cơ bản',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
                           ),
-                          obscureText: true,
-                          validator: (v) => (v == null || v.length < 6)
-                              ? 'Mật khẩu phải từ 6 ký tự'
-                              : null,
                         ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<int>(
-                        value: _selectedRoleId,
-                        items: const [
-                          DropdownMenuItem(value: 1, child: Text('Admin')),
-                          DropdownMenuItem(
-                            value: 2,
-                            child: Text('WarehouseManager'),
-                          ),
-                          DropdownMenuItem(value: 3, child: Text('Driver')),
-                        ],
-                        onChanged: (val) =>
-                            setStateDialog(() => _selectedRoleId = val!),
-                        decoration: const InputDecoration(
-                          labelText: 'Chức vụ *',
-                          border: OutlineInputBorder(),
+                        const Divider(),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: _nameController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Họ tên *',
+                                  prefixIcon: Icon(Icons.person_outline),
+                                ),
+                                validator: (v) =>
+                                    (v == null || v.trim().length < 5)
+                                        ? 'Họ tên phải từ 5 ký tự'
+                                        : null,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(child: _buildRoleDropdown(setStateDialog)),
+                          ],
                         ),
-                      ),
-
-                      // Hiển thị công tắc trạng thái nếu đang Sửa
-                      if (userToEdit != null) ...[
                         const SizedBox(height: 16),
-                        SwitchListTile(
-                          title: const Text(
-                            'Trạng thái hoạt động',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          subtitle: Text(
-                            _isActive
-                                ? 'Đang làm việc / Đã duyệt'
-                                : 'Đã nghỉ / Chờ duyệt',
-                          ),
-                          value: _isActive,
-                          activeColor: Colors.green,
-                          onChanged: (bool value) {
-                            setStateDialog(() => _isActive = value);
-                          },
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: _emailController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Email *',
+                                  prefixIcon: Icon(Icons.email_outlined),
+                                ),
+                                enabled: userToEdit == null,
+                                validator:
+                                    (v) => (v == null || !v.contains('@'))
+                                        ? 'Email không hợp lệ'
+                                        : null,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: TextFormField(
+                                controller: _phoneController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Số điện thoại *',
+                                  prefixIcon: Icon(Icons.phone_android),
+                                ),
+                                validator: (v) =>
+                                    (v == null ||
+                                            !RegExp(r'^(0)[0-9]{9}$')
+                                                .hasMatch(v))
+                                        ? 'SDT gồm 10 số, bắt đầu bằng 0'
+                                        : null,
+                              ),
+                            ),
+                          ],
                         ),
+                        if (userToEdit == null) ...[
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _passwordController,
+                            decoration: const InputDecoration(
+                              labelText: 'Mật khẩu *',
+                              prefixIcon: Icon(Icons.lock_outline),
+                            ),
+                            obscureText: true,
+                            validator: (v) => (v == null || v.length < 6)
+                                ? 'Mật khẩu phải từ 6 ký tự'
+                                : null,
+                          ),
+                        ],
+                        const SizedBox(height: 24),
+                        const Text(
+                          'Thông tin định danh & Địa chỉ',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        const Divider(),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _idCardController,
+                          decoration: const InputDecoration(
+                            labelText: 'Số CMT / CCCD',
+                            prefixIcon: Icon(Icons.badge_outlined),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: _originController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Quê quán',
+                                  prefixIcon: Icon(Icons.location_on_outlined),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: TextFormField(
+                                controller: _addressController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Địa chỉ thường trú',
+                                  prefixIcon: Icon(Icons.home_outlined),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (userToEdit != null) ...[
+                          const SizedBox(height: 24),
+                          const Text(
+                            'Trạng thái tài khoản',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          const Divider(),
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text(
+                              'Đang hoạt động',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            subtitle: Text(
+                              _isActive
+                                  ? 'Nhân viên đang làm việc'
+                                  : 'Nhân viên đã nghỉ / Chờ duyệt',
+                            ),
+                            value: _isActive,
+                            activeColor: Colors.green,
+                            onChanged: (bool value) {
+                              setStateDialog(() => _isActive = value);
+                            },
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -272,6 +385,9 @@ class _UserListScreenState extends State<UserListScreen> {
                           _phoneController.text.trim(),
                           _passwordController.text.trim(),
                           _selectedRoleId,
+                          _idCardController.text.trim(),
+                          _originController.text.trim(),
+                          _addressController.text.trim(),
                         );
                       } else {
                         success = await _userService.updateUser(
@@ -279,7 +395,10 @@ class _UserListScreenState extends State<UserListScreen> {
                           _nameController.text.trim(),
                           _phoneController.text.trim(),
                           _selectedRoleId,
-                          _isActive, // Đảm bảo hàm updateUser của bạn nhận biến này
+                          _isActive,
+                          _idCardController.text.trim(),
+                          _originController.text.trim(),
+                          _addressController.text.trim(),
                         );
                       }
 
@@ -314,23 +433,8 @@ class _UserListScreenState extends State<UserListScreen> {
     final bool isAdmin = widget.currentRoleId == 1;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Quản lý Nhân sự'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _performSearch,
-            tooltip: 'Làm mới',
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _logout,
-            tooltip: 'Đăng xuất',
-          ),
-        ],
-      ),
       floatingActionButton: isAdmin
-          ? FloatingActionButton(
+? FloatingActionButton(
               onPressed: () => _showUserDialog(),
               tooltip: 'Thêm nhân sự',
               child: const Icon(Icons.add),
@@ -353,15 +457,24 @@ class _UserListScreenState extends State<UserListScreen> {
                   decoration: InputDecoration(
                     hintText: 'Tìm kiếm theo tên, email hoặc SĐT...',
                     prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_searchController.text.isNotEmpty)
+                          IconButton(
                             icon: const Icon(Icons.clear),
                             onPressed: () {
                               _searchController.clear();
-                              _onSearchChanged(); // Gọi lại tìm kiếm khi xóa trắng
+                              _onSearchChanged();
                             },
-                          )
-                        : null,
+                          ),
+                        IconButton(
+                          icon: const Icon(Icons.refresh),
+                          onPressed: _performSearch,
+                          tooltip: 'Làm mới',
+                        ),
+                      ],
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
