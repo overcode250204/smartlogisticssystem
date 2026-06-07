@@ -62,7 +62,11 @@ ThemeData buildSmartLogisticsTheme() {
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.primary,
+        side: const BorderSide(color: AppColors.primary),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
       ),
     ),
     dataTableTheme: const DataTableThemeData(

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:smartlogisticssystem/core/app_theme.dart';
 import 'package:smartlogisticssystem/data/model/product_request_model.dart';
-import 'package:smartlogisticssystem/data/model/product_response_model.dart';
 import 'package:smartlogisticssystem/data/model/supplier_response_model.dart';
+import 'package:smartlogisticssystem/data/model/product_category_model.dart';
 import 'package:smartlogisticssystem/widgets/api_error_message.dart';
 import 'package:smartlogisticssystem/feature/supplier/screens/create_supplier_dialog.dart';
 import 'package:smartlogisticssystem/feature/product/product_service/product_service.dart';
 import 'package:smartlogisticssystem/feature/supplier/service/supplier_service.dart';
+import 'package:smartlogisticssystem/feature/category/screens/create_category_dialog.dart';
+import 'package:smartlogisticssystem/feature/category/service/category_service.dart';
 
 class CreateProductDialog extends StatefulWidget {
   const CreateProductDialog({super.key});
@@ -20,12 +22,21 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
   final _nameController = TextEditingController();
   final _minStockController = TextEditingController(text: '0');
   final _priceController = TextEditingController();
+  final _weightController = TextEditingController();
+  
   final ProductService _productService = ProductService();
   final SupplierService _supplierService = SupplierService();
+  final CategoryService _categoryService = CategoryService();
 
   late Future<List<SupplierResponse>> _suppliersFuture;
+  late Future<List<ProductCategoryResponse>> _categoriesFuture;
+  
   List<SupplierResponse> _suppliers = [];
   SupplierResponse? _selectedSupplier;
+  
+  List<ProductCategoryResponse> _categories = [];
+  ProductCategoryResponse? _selectedCategory;
+  
   bool _isSubmitting = false;
   String? _errorMessage;
 
@@ -33,6 +44,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
   void initState() {
     super.initState();
     _suppliersFuture = _loadSuppliers();
+    _categoriesFuture = _loadCategories();
   }
 
   @override
@@ -40,6 +52,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
     _nameController.dispose();
     _minStockController.dispose();
     _priceController.dispose();
+    _weightController.dispose();
     super.dispose();
   }
 
@@ -50,6 +63,15 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
       _selectedSupplier = suppliers.first;
     }
     return suppliers;
+  }
+
+  Future<List<ProductCategoryResponse>> _loadCategories() async {
+    final categories = await _categoryService.getAllCategories();
+    _categories = categories;
+    if (_selectedCategory == null && categories.isNotEmpty) {
+      _selectedCategory = categories.first;
+    }
+    return categories;
   }
 
   Future<void> _openCreateSupplierDialog() async {
@@ -66,15 +88,53 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
       _suppliersFuture = Future.value(_suppliers);
       _errorMessage = null;
     });
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Đã tạo nhà cung cấp: ${supplier.supplierName}'),
+        backgroundColor: AppColors.success,
+      ),
+    );
+  }
+
+  Future<void> _openCreateCategoryDialog() async {
+    final category = await showDialog<ProductCategoryResponse>(
+      context: context,
+      builder: (context) => const CreateCategoryDialog(),
+    );
+
+    if (category == null || !mounted) return;
+
+    setState(() {
+      _categories = [..._categories, category];
+      _selectedCategory = category;
+      _categoriesFuture = Future.value(_categories);
+      _errorMessage = null;
+    });
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Đã tạo danh mục: ${category.categoryName}'),
+        backgroundColor: AppColors.success,
+      ),
+    );
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
     final supplier = _selectedSupplier;
-    if (supplier == null || supplier.supplierId == null) {
+    if (supplier == null) {
       setState(() {
         _errorMessage = 'Vui lòng chọn nhà cung cấp';
+      });
+      return;
+    }
+
+    final category = _selectedCategory;
+    if (category == null) {
+      setState(() {
+        _errorMessage = 'Vui lòng chọn danh mục';
       });
       return;
     }
@@ -88,9 +148,11 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
       final product = await _productService.createProduct(
         ProductCreateRequest(
           supplierId: supplier.supplierId,
+          categoryId: category.categoryId,
           productName: _nameController.text.trim(),
           minStockLevel: int.parse(_minStockController.text.trim()),
           price: double.parse(_priceController.text.trim()),
+          weight: double.parse(_weightController.text.trim()),
         ),
       );
 
@@ -126,10 +188,10 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
           ),
           child: Form(
             key: _formKey,
-            child: FutureBuilder<List<SupplierResponse>>(
-              future: _suppliersFuture,
+            child: FutureBuilder(
+              future: Future.wait([_suppliersFuture, _categoriesFuture]),
               builder: (context, snapshot) {
-                final isLoadingSuppliers =
+                final isLoading =
                     snapshot.connectionState == ConnectionState.waiting;
 
                 return SingleChildScrollView(
@@ -170,7 +232,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                                 child: TextFormField(
                                   controller: _nameController,
                                   decoration: const InputDecoration(
-                                    labelText: 'Product Name',
+                                    labelText: 'Tên sản phẩm',
                                     prefixIcon: Icon(
                                       Icons.inventory_2_outlined,
                                     ),
@@ -182,8 +244,8 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                                 width: isWide
                                     ? (constraints.maxWidth - 14)
                                     : constraints.maxWidth,
-                                child: isLoadingSuppliers
-                                    ? const _LoadingSuppliers()
+                                child: isLoading
+                                    ? const _LoadingWidget(text: 'Đang tải nhà cung cấp...')
                                     : _SupplierPicker(
                                         suppliers: _suppliers,
                                         selectedSupplier: _selectedSupplier,
@@ -196,17 +258,23 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                                             _openCreateSupplierDialog,
                                       ),
                               ),
-                              _FieldBox(
-                                isWide: isWide,
-                                child: TextFormField(
-                                  controller: _minStockController,
-                                  keyboardType: TextInputType.number,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Min Stock Level',
-                                    prefixIcon: Icon(Icons.low_priority),
-                                  ),
-                                  validator: _minStockValidator,
-                                ),
+                              SizedBox(
+                                width: isWide
+                                    ? (constraints.maxWidth - 14)
+                                    : constraints.maxWidth,
+                                child: isLoading
+                                    ? const _LoadingWidget(text: 'Đang tải danh mục...')
+                                    : _CategoryPicker(
+                                        categories: _categories,
+                                        selectedCategory: _selectedCategory,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _selectedCategory = value;
+                                          });
+                                        },
+                                        onCreateCategory:
+                                            _openCreateCategoryDialog,
+                                      ),
                               ),
                               _FieldBox(
                                 isWide: isWide,
@@ -214,10 +282,34 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                                   controller: _priceController,
                                   keyboardType: TextInputType.number,
                                   decoration: const InputDecoration(
-                                    labelText: 'Price',
+                                    labelText: 'Giá',
                                     prefixIcon: Icon(Icons.payments_outlined),
                                   ),
                                   validator: _priceValidator,
+                                ),
+                              ),
+                              _FieldBox(
+                                isWide: isWide,
+                                child: TextFormField(
+                                  controller: _weightController,
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  decoration: const InputDecoration(
+                                    labelText: 'Khối lượng (kg)',
+                                    prefixIcon: Icon(Icons.scale_outlined),
+                                  ),
+                                  validator: _weightValidator,
+                                ),
+                              ),
+                              _FieldBox(
+                                isWide: isWide,
+                                child: TextFormField(
+                                  controller: _minStockController,
+                                  keyboardType: TextInputType.number,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Tồn tối thiểu',
+                                    prefixIcon: Icon(Icons.low_priority),
+                                  ),
+                                  validator: _minStockValidator,
                                 ),
                               ),
                             ],
@@ -240,7 +332,7 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
                           ),
                           const SizedBox(width: 12),
                           ElevatedButton.icon(
-                            onPressed: _isSubmitting || isLoadingSuppliers
+                            onPressed: _isSubmitting || isLoading
                                 ? null
                                 : _submit,
                             icon: _isSubmitting
@@ -307,6 +399,17 @@ class _CreateProductDialogState extends State<CreateProductDialog> {
     }
     return null;
   }
+
+  String? _weightValidator(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Khối lượng không được rỗng';
+    }
+    final parsed = double.tryParse(value.trim());
+    if (parsed == null || parsed <= 0) {
+      return 'Khối lượng phải lớn hơn 0';
+    }
+    return null;
+  }
 }
 
 class _FieldBox extends StatelessWidget {
@@ -321,26 +424,28 @@ class _FieldBox extends StatelessWidget {
   }
 }
 
-class _LoadingSuppliers extends StatelessWidget {
-  const _LoadingSuppliers();
+class _LoadingWidget extends StatelessWidget {
+  final String text;
+  
+  const _LoadingWidget({required this.text});
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox(
+    return SizedBox(
       height: 58,
       child: Align(
         alignment: Alignment.centerLeft,
         child: Row(
           children: [
-            SizedBox(
+            const SizedBox(
               width: 18,
               height: 18,
               child: CircularProgressIndicator(strokeWidth: 2),
             ),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Text(
-              'Đang tải nhà cung cấp...',
-              style: TextStyle(color: AppColors.textSecondary),
+              text,
+              style: const TextStyle(color: AppColors.textSecondary),
             ),
           ],
         ),
@@ -396,9 +501,9 @@ class _SupplierPicker extends StatelessWidget {
       children: [
         Expanded(
           child: DropdownButtonFormField<SupplierResponse>(
-            initialValue: selectedSupplier,
+            value: selectedSupplier,
             decoration: const InputDecoration(
-              labelText: 'Supplier',
+              labelText: 'Nhà cung cấp',
               prefixIcon: Icon(Icons.store_outlined),
             ),
             items: suppliers
@@ -420,7 +525,86 @@ class _SupplierPicker extends StatelessWidget {
           child: OutlinedButton.icon(
             onPressed: onCreateSupplier,
             icon: const Icon(Icons.add_business_outlined),
-            label: const Text('Tạo nhà cung cấp'),
+            label: const Text('+ Nhà cung cấp'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CategoryPicker extends StatelessWidget {
+  final List<ProductCategoryResponse> categories;
+  final ProductCategoryResponse? selectedCategory;
+  final ValueChanged<ProductCategoryResponse?> onChanged;
+  final VoidCallback onCreateCategory;
+
+  const _CategoryPicker({
+    required this.categories,
+    required this.selectedCategory,
+    required this.onChanged,
+    required this.onCreateCategory,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (categories.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.darkest,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Chưa có danh mục. Hãy tạo danh mục trước.',
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+            ),
+            const SizedBox(width: 12),
+            OutlinedButton.icon(
+              onPressed: onCreateCategory,
+              icon: const Icon(Icons.category_outlined),
+              label: const Text('+ Danh mục'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: DropdownButtonFormField<ProductCategoryResponse>(
+            value: selectedCategory,
+            decoration: const InputDecoration(
+              labelText: 'Danh mục',
+              prefixIcon: Icon(Icons.category_outlined),
+            ),
+            items: categories
+                .map(
+                  (category) => DropdownMenuItem(
+                    value: category,
+                    child: Text(category.categoryName),
+                  ),
+                )
+                .toList(),
+            onChanged: onChanged,
+            validator: (value) =>
+                value == null ? 'Vui lòng chọn danh mục' : null,
+          ),
+        ),
+        const SizedBox(width: 12),
+        SizedBox(
+          height: 56,
+          child: OutlinedButton.icon(
+            onPressed: onCreateCategory,
+            icon: const Icon(Icons.category_outlined),
+            label: const Text('+ Danh mục'),
           ),
         ),
       ],

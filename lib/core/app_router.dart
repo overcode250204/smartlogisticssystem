@@ -12,6 +12,7 @@ import 'package:smartlogisticssystem/feature/inventory/screens/export_page.dart'
 import 'package:smartlogisticssystem/feature/inventory/screens/import_page.dart';
 import 'package:smartlogisticssystem/feature/inventory/screens/inventory_management_screen.dart';
 import 'package:smartlogisticssystem/feature/supplier/screens/suppliers_page.dart';
+import 'package:smartlogisticssystem/feature/category/screens/categories_page.dart';
 import 'package:smartlogisticssystem/feature/inventory/screens/barcode_scan_page.dart';
 import 'package:smartlogisticssystem/feature/inventory/screens/staff_batch_detail_page.dart';
 import 'package:smartlogisticssystem/data/model/inventory_batch_response_model.dart';
@@ -138,6 +139,11 @@ final appRouter = GoRouter(
           pageBuilder: (context, state) =>
               const NoTransitionPage(child: SuppliersPage()),
         ),
+        GoRoute(
+          path: '/categories',
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: CategoriesPage()),
+        ),
       ],
     ),
   ],
@@ -154,6 +160,7 @@ String _titleForPath(String path) {
     '/export' => 'Xuất hàng',
     '/reports' => 'Báo cáo',
     '/suppliers' => 'Nhà cung cấp',
+    '/categories' => 'Danh mục',
     '/users' => 'Quản lý nhân sự',
     '/settings' => 'Cài đặt',
     _ => 'Smart Logistics',

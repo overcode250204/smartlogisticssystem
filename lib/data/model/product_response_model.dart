@@ -5,16 +5,22 @@ class ProductResponse {
   final SupplierSimpleResponse? supplier;
   final String productCode;
   final String productName;
+  final int? categoryId;
+  final String? categoryName;
   final int minStockLevel;
   final double price;
+  final double? weight;
 
   const ProductResponse({
     required this.productId,
     this.supplier,
     required this.productCode,
     required this.productName,
+    this.categoryId,
+    this.categoryName,
     required this.minStockLevel,
     required this.price,
+    this.weight,
   });
 
   factory ProductResponse.fromJson(Map<String, dynamic> json) {
@@ -25,8 +31,11 @@ class ProductResponse {
           : null,
       productCode: json['productCode']?.toString() ?? '',
       productName: json['productName']?.toString() ?? '',
+      categoryId: json['categoryId'] as int?,
+      categoryName: json['categoryName']?.toString(),
       minStockLevel: json['minStockLevel'] as int? ?? 0,
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
+      weight: (json['weight'] as num?)?.toDouble(),
     );
   }
 }

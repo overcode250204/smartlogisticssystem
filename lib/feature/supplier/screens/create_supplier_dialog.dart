@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:smartlogisticssystem/core/app_theme.dart';
 import 'package:smartlogisticssystem/data/model/supplier_request_model.dart';
 import 'package:smartlogisticssystem/widgets/api_error_message.dart';
-import 'package:smartlogisticssystem/feature/product/product_service/product_service.dart';
 import 'package:smartlogisticssystem/feature/supplier/service/supplier_service.dart';
 
 class CreateSupplierDialog extends StatefulWidget {

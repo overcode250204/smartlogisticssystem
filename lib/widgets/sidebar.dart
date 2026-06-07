@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:smartlogisticssystem/core/auth_session.dart';
 import 'package:smartlogisticssystem/core/app_theme.dart';
 
@@ -66,6 +65,12 @@ class Sidebar extends StatelessWidget {
       label: 'Nhà cung cấp',
       route: '/suppliers',
       icon: Icons.groups_outlined,
+      allowedRoleIds: {AuthSession.managerRoleId},
+    ),
+    SidebarItem(
+      label: 'Danh mục',
+      route: '/categories',
+      icon: Icons.category_outlined,
       allowedRoleIds: {AuthSession.managerRoleId},
     ),
     SidebarItem(

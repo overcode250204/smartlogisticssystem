@@ -421,6 +421,9 @@ class _ProductsTab extends StatelessWidget {
               ) ||
               (product.supplier?.supplierName ?? "").toLowerCase().contains(
                 searchQuery.toLowerCase(),
+              ) ||
+              (product.categoryName ?? "").toLowerCase().contains(
+                searchQuery.toLowerCase(),
               ),
         )
         .toList();
@@ -466,7 +469,9 @@ class _ProductsTab extends StatelessWidget {
               DataColumn(label: Text('Mã SP')),
               DataColumn(label: Text('Tên SP')),
               DataColumn(label: Text('Nhà cung cấp')),
+              DataColumn(label: Text('Danh mục')),
               DataColumn(label: Text('Tồn tối thiểu')),
+              DataColumn(label: Text('Khối lượng')),
               DataColumn(label: Text('Giá (VNĐ)')),
               DataColumn(label: Text('Thao tác')),
             ],
@@ -497,7 +502,9 @@ class _ProductsTab extends StatelessWidget {
         DataCell(Text(product.productCode)),
         DataCell(Text(product.productName)),
         DataCell(Text(product.supplier?.supplierName ?? "")),
+        DataCell(Text(product.categoryName ?? "")),
         DataCell(Text(product.minStockLevel.toString())),
+        DataCell(Text(product.weight != null ? '${product.weight} kg' : '')),
         DataCell(Text(currencyFormatter.format(product.price))),
         DataCell(
           Row(

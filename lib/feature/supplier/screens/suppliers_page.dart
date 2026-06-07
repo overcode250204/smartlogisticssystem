@@ -4,7 +4,6 @@ import 'package:smartlogisticssystem/data/model/supplier_request_model.dart';
 import 'package:smartlogisticssystem/data/model/supplier_response_model.dart';
 import 'package:smartlogisticssystem/widgets/api_error_message.dart';
 import 'package:smartlogisticssystem/widgets/dashboard_widgets.dart';
-import 'package:smartlogisticssystem/feature/supplier/screens/create_supplier_dialog.dart';
 import 'package:smartlogisticssystem/feature/supplier/service/supplier_service.dart';
 
 class SuppliersPage extends StatefulWidget {
