@@ -1,4 +1,5 @@
 import 'dart:developer' as developer;
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:smartlogisticssystem/core/networking.dart';
@@ -34,29 +35,66 @@ class ProductService {
     }
   }
 
-  Future<ProductResponse> createProduct(ProductCreateRequest request) async {
+  Future<ProductResponse> createProduct(
+    ProductCreateRequest request, {
+    File? imageFile,
+  }) async {
     try {
-      final response = await _client.post('products', data: request.toJson());
+      final formData = FormData.fromMap({
+        ...request.toJson(),
+
+        // Tên key phải trùng với @RequestParam / @RequestPart bên Backend.
+        if (imageFile != null)
+          'image': await MultipartFile.fromFile(
+            imageFile.path,
+            filename: imageFile.path.split('/').last,
+          ),
+      });
+
+      final response = await _client.post(
+        'products',
+        data: formData,
+        options: Options(contentType: Headers.multipartFormDataContentType),
+      );
+
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final dynamic data = response.data['data'];
-        return ProductResponse.fromJson(data);
+        final responseData = response.data;
+
+        // Hỗ trợ cả API format { data: {...} } và response trả object trực tiếp.
+        final dynamic productData =
+            responseData is Map<String, dynamic> && responseData['data'] != null
+            ? responseData['data']
+            : responseData;
+
+        return ProductResponse.fromJson(
+          Map<String, dynamic>.from(productData as Map),
+        );
       }
+
       throw DioException(
         requestOptions: response.requestOptions,
         response: response,
         message: 'Không thể tạo sản phẩm',
       );
-    } catch (e) {
-      developer.log('Error creating product', error: e);
-      if (e is DioException) {
-        developer.log('Response Status Code: ${e.response?.statusCode}');
-        developer.log('Response Data: ${e.response?.data}');
-      }
+    } on DioException catch (e, stackTrace) {
+      developer.log('Error creating product', error: e, stackTrace: stackTrace);
+      developer.log('Response Status Code: ${e.response?.statusCode}');
+      developer.log('Response Data: ${e.response?.data}');
+      rethrow;
+    } catch (e, stackTrace) {
+      developer.log(
+        'Unexpected error creating product',
+        error: e,
+        stackTrace: stackTrace,
+      );
       rethrow;
     }
   }
 
-  Future<ProductResponse?> updateProduct(int id, ProductUpdateRequest request) async {
+  Future<ProductResponse?> updateProduct(
+    int id,
+    ProductUpdateRequest request,
+  ) async {
     try {
       final response = await _client.put(
         'products/$id',
