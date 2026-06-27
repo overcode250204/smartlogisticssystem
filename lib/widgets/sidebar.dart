@@ -45,8 +45,8 @@ class Sidebar extends StatelessWidget {
     ),
     SidebarItem(
       label: 'Tạo sản phẩm',
-      route: '/product',
-      icon: Icons.qr_code_2,
+      route: '/products/create',
+      icon: Icons.add_box_outlined,
       allowedRoleIds: {AuthSession.managerRoleId},
     ),
     SidebarItem(

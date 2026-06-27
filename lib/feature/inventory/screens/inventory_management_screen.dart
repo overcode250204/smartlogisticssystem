@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:smartlogisticssystem/core/app_theme.dart';
 import 'package:smartlogisticssystem/data/model/inventory_batch_response_model.dart';
 import 'package:smartlogisticssystem/data/model/inventory_transaction_response_model.dart';
 import 'package:smartlogisticssystem/data/model/product_response_model.dart';
 import 'package:smartlogisticssystem/feature/inventory/services/inventory_service.dart';
 import 'package:smartlogisticssystem/widgets/dashboard_widgets.dart';
-import 'package:smartlogisticssystem/feature/supplier/screens/create_supplier_dialog.dart';
-import 'package:smartlogisticssystem/feature/product/product_service/product_service.dart';
-import 'package:smartlogisticssystem/feature/inventory/services/inventory_batch_service.dart';
 import 'package:smartlogisticssystem/feature/product/screens/create_product_dialog.dart';
 
 class InventoryManagementScreen extends StatefulWidget {
@@ -147,7 +145,7 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
                 data.batches.isEmpty &&
                 data.transactions.isEmpty)) {
           return _EmptyInventoryState(
-            onCreateProduct: _openCreateProductDialog,
+            onCreateProduct: () => context.go('/products/create'),
             onCreateBatch: _showBatchHint,
             onReload: _reloadData,
           );
@@ -221,7 +219,7 @@ class _EmptyInventoryState extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Bắt đầu bằng cách tạo sản phẩm. Nếu chưa có nhà cung cấp, form sẽ cho phép tạo nhanh và tự chọn nhà cung cấp mới.',
+                  'Bắt đầu bằng cách tạo sản phẩm đầu tiên. Sau khi tạo sản phẩm,\nbạn có thể nhập kho và quản lý số lượng tồn.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: AppColors.textSecondary,
@@ -551,8 +549,8 @@ class _BatchesTab extends StatelessWidget {
             .map(
               (batch) => DataRow(
                 cells: [
-                  DataCell(Text('LH${batch.batchId ?? ''}')),
-                  DataCell(Text((batch.product?.productName ?? "") ?? '')),
+                  DataCell(Text('LH${batch.batchId}')),
+                  DataCell(Text(batch.product?.productName ?? '')),
                   DataCell(Text(dateFormatter.format(batch.importDate))),
                   DataCell(Text(dateFormatter.format(batch.expirationDate))),
                   DataCell(Text(batch.quantity.toString())),
@@ -588,7 +586,7 @@ class _TransactionsTab extends StatelessWidget {
             .map(
               (transaction) => DataRow(
                 cells: [
-                  DataCell(Text('GD${transaction.transactionId ?? ''}')),
+                  DataCell(Text('GD${transaction.transactionId}')),
                   DataCell(Text('LH${transaction.batch?.batchId ?? ''}')),
                   DataCell(StatusPill.transaction(transaction.type)),
                   DataCell(Text(transaction.quantity.toString())),
@@ -636,7 +634,7 @@ class _BottomGrid extends StatelessWidget {
                   (batch) => ListTile(
                     dense: true,
                     contentPadding: EdgeInsets.zero,
-                    title: Text((batch.product?.productName ?? "") ?? ''),
+                    title: Text(batch.product?.productName ?? ''),
                     subtitle: Text(
                       'Hạn dùng ${dateFormatter.format(batch.expirationDate)}',
                     ),
@@ -656,7 +654,7 @@ class _BottomGrid extends StatelessWidget {
                   (transaction) => ListTile(
                     dense: true,
                     contentPadding: EdgeInsets.zero,
-                    title: Text('GD${transaction.transactionId ?? ''}'),
+                    title: Text('GD${transaction.transactionId}'),
                     subtitle: Text(
                       dateTimeFormatter.format(transaction.createdAt),
                     ),

@@ -12,6 +12,7 @@ import 'package:smartlogisticssystem/feature/inventory/screens/export_page.dart'
 import 'package:smartlogisticssystem/feature/inventory/screens/import_page.dart';
 import 'package:smartlogisticssystem/feature/inventory/screens/inventory_management_screen.dart';
 import 'package:smartlogisticssystem/feature/supplier/screens/suppliers_page.dart';
+import 'package:smartlogisticssystem/feature/product/screens/create_product_page.dart';
 import 'package:smartlogisticssystem/feature/category/screens/categories_page.dart';
 import 'package:smartlogisticssystem/feature/inventory/screens/barcode_scan_page.dart';
 import 'package:smartlogisticssystem/feature/inventory/screens/staff_batch_detail_page.dart';
@@ -37,6 +38,7 @@ final appRouter = GoRouter(
       pageBuilder: (context, state) =>
           const NoTransitionPage(child: MobileLoginScreen()),
     ),
+
     GoRoute(
       path: '/driver',
       pageBuilder: (context, state) =>
@@ -94,6 +96,11 @@ final appRouter = GoRouter(
           path: '/barcode-gen',
           pageBuilder: (context, state) =>
               const NoTransitionPage(child: ImportPage()),
+        ),
+        GoRoute(
+          path: '/products/create',
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: CreateProductPage()),
         ),
         GoRoute(
           path: '/export',
@@ -163,6 +170,7 @@ String _titleForPath(String path) {
     '/categories' => 'Danh mục',
     '/users' => 'Quản lý nhân sự',
     '/settings' => 'Cài đặt',
+    '/products/create' => 'Tạo sản phẩm',
     _ => 'Smart Logistics',
   };
 }
