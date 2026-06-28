@@ -612,13 +612,7 @@ class _ProductManagementPageState extends State<ProductManagementPage> {
         ),
         IconButton(
           icon: const Icon(Icons.edit_outlined, color: AppColors.warning),
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Chức năng chỉnh sửa đang được phát triển'),
-              ),
-            );
-          },
+          onPressed: () => context.go('/products/${product.productId}/edit'),
           tooltip: 'Chỉnh sửa',
         ),
         IconButton(

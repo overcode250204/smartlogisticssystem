@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smartlogisticssystem/core/auth_session.dart';
@@ -13,6 +13,8 @@ import 'package:smartlogisticssystem/feature/inventory/screens/import_page.dart'
 import 'package:smartlogisticssystem/feature/inventory/screens/inventory_management_screen.dart';
 import 'package:smartlogisticssystem/feature/supplier/screens/suppliers_page.dart';
 import 'package:smartlogisticssystem/feature/product/screens/create_product_page.dart';
+import 'package:smartlogisticssystem/feature/product/screens/edit_product_page.dart';
+import 'package:smartlogisticssystem/feature/product/product_detail/product_detail_page.dart';
 import 'package:smartlogisticssystem/feature/product/product_management/product_management_page.dart';
 import 'package:smartlogisticssystem/feature/category/screens/categories_page.dart';
 import 'package:smartlogisticssystem/feature/inventory/screens/barcode_scan_page.dart';
@@ -108,6 +110,26 @@ final appRouter = GoRouter(
               pageBuilder: (context, state) =>
                   const NoTransitionPage(child: CreateProductPage()),
             ),
+            GoRoute(
+              path: ':id',
+              pageBuilder: (context, state) {
+                final id = int.parse(state.pathParameters['id']!);
+                return NoTransitionPage(
+                  child: ProductDetailPage(productId: id),
+                );
+              },
+              routes: [
+                GoRoute(
+                  path: 'edit',
+                  pageBuilder: (context, state) {
+                    final id = int.parse(state.pathParameters['id']!);
+                    return NoTransitionPage(
+                      child: EditProductPage(productId: id),
+                    );
+                  },
+                ),
+              ],
+            ),
           ],
         ),
         GoRoute(
@@ -163,10 +185,18 @@ final appRouter = GoRouter(
     ),
   ],
   errorBuilder: (context, state) =>
-      const Scaffold(body: Center(child: Text('Không tìm thấy trang'))),
+      const Scaffold(body: Center(child: Text('KhÃ´ng tÃ¬m tháº¥y trang'))),
 );
 
 String _titleForPath(String path) {
+  if (RegExp(r'^/products/\d+/edit$').hasMatch(path)) {
+    return 'Chỉnh sửa sản phẩm';
+  }
+
+  if (RegExp(r'^/products/\d+$').hasMatch(path)) {
+    return 'Chi tiết sản phẩm';
+  }
+
   return switch (path) {
     '/dashboard' => 'Tổng quan',
     '/inventory' => 'Quản lý kho',

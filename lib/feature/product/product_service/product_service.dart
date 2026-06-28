@@ -10,20 +10,51 @@ import 'package:smartlogisticssystem/data/model/product_response_model.dart';
 class ProductService {
   final ApiClient _client = ApiClient();
 
+  String _messageFromDio(DioException e, String fallback) {
+    final data = e.response?.data;
+    if (data is Map && data['message'] != null) {
+      return data['message'].toString();
+    }
+    return e.message ?? fallback;
+  }
+
+  ProductResponse _parseProductResponse(dynamic responseData) {
+    final dynamic productData =
+        responseData is Map<String, dynamic> && responseData['data'] != null
+        ? responseData['data']
+        : responseData;
+
+    if (productData is Map<String, dynamic>) {
+      return ProductResponse.fromJson(productData);
+    }
+    if (productData is Map) {
+      return ProductResponse.fromJson(Map<String, dynamic>.from(productData));
+    }
+
+    throw StateError('Product API trả về dữ liệu không hợp lệ: $productData');
+  }
+
   Future<List<ProductResponse>> getAllProducts() async {
     try {
       final response = await _client.get('products');
       if (response.statusCode == 200) {
-        final List<dynamic> data = response.data['data'];
-        return data.map((item) => ProductResponse.fromJson(item)).toList();
+        final rawData = response.data is Map<String, dynamic>
+            ? response.data['data']
+            : response.data;
+        if (rawData is! List) {
+          throw StateError('Danh sách sản phẩm trả về không hợp lệ');
+        }
+        return rawData
+            .map(
+              (item) => ProductResponse.fromJson(
+                Map<String, dynamic>.from(item as Map),
+              ),
+            )
+            .toList();
       }
-      return [];
+      throw Exception('Không thể tải danh sách sản phẩm');
     } catch (e) {
       developer.log('Error in getAllProducts', error: e);
-      if (e is DioException) {
-        developer.log('Response Status Code: ${e.response?.statusCode}');
-        developer.log('Response Data: ${e.response?.data}');
-      }
       rethrow;
     }
   }
@@ -44,21 +75,21 @@ class ProductService {
     int? supplierId,
   }) async {
     try {
-      final queryParameters = {
-        'page': page,
-        'size': size,
-        if (keyword != null && keyword.isNotEmpty) 'keyword': keyword,
-        if (categoryId != null) 'categoryId': categoryId,
-        if (supplierId != null) 'supplierId': supplierId,
-      };
-      
       final response = await _client.get(
         'products/page',
-        queryParameters: queryParameters,
+        queryParameters: {
+          'page': page,
+          'size': size,
+          if (keyword != null && keyword.isNotEmpty) 'keyword': keyword,
+          if (categoryId != null) 'categoryId': categoryId,
+          if (supplierId != null) 'supplierId': supplierId,
+        },
       );
-      
+
       if (response.statusCode == 200) {
-        final dynamic data = response.data['data'];
+        final data = response.data is Map<String, dynamic>
+            ? response.data['data']
+            : response.data;
         if (data is Map<String, dynamic>) {
           return ProductPageResponse.fromJson(data);
         }
@@ -67,10 +98,36 @@ class ProductService {
         }
         throw StateError('Product page response is invalid: $data');
       }
-      throw Exception('Failed to load product page');
+
+      throw Exception('Không thể tải trang sản phẩm');
     } catch (e) {
       developer.log('Error in getProductsPage', error: e);
       rethrow;
+    }
+  }
+
+  Future<ProductResponse> getProductById(int id) async {
+    try {
+      final response = await _client.get('products/$id');
+      if (response.statusCode == 200) {
+        return _parseProductResponse(response.data);
+      }
+      throw DioException(
+        requestOptions: response.requestOptions,
+        response: response,
+        message: 'Không thể tải chi tiết sản phẩm',
+      );
+    } on DioException catch (e) {
+      developer.log('Error fetching product', error: e);
+      throw Exception(_messageFromDio(e, 'Không thể tải chi tiết sản phẩm'));
+    }
+  }
+
+  Future<ProductResponse?> fetchProductById(int id) async {
+    try {
+      return await getProductById(id);
+    } catch (_) {
+      return null;
     }
   }
 
@@ -80,11 +137,6 @@ class ProductService {
   }) async {
     try {
       final formData = FormData();
-
-      // Backend đang dùng:
-      // @RequestPart("data") ProductCreateRequest request
-      //
-      // Vì vậy toàn bộ request JSON phải được gửi trong part tên "data".
       formData.files.add(
         MapEntry(
           'data',
@@ -95,8 +147,6 @@ class ProductService {
         ),
       );
 
-      // Backend đang dùng:
-      // @RequestPart(value = "image", required = false) MultipartFile image
       if (imageFile != null) {
         formData.files.add(
           MapEntry(
@@ -109,36 +159,9 @@ class ProductService {
         );
       }
 
-      final response = await _client.post(
-        'products',
-        data: formData,
-
-        // Không set Headers.multipartFormDataContentType thủ công.
-        // Dio tự thêm Content-Type multipart/form-data kèm boundary chính xác.
-        options: Options(
-          headers: {
-            // Chỉ giữ 2 header này nếu ApiClient của bạn CHƯA tự thêm.
-            // 'X-Role-Id': currentRoleId.toString(),
-            // 'X-User-Id': currentUserId.toString(),
-          },
-        ),
-      );
-
+      final response = await _client.post('products', data: formData);
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final responseData = response.data;
-
-        final dynamic productData =
-            responseData is Map<String, dynamic> && responseData['data'] != null
-            ? responseData['data']
-            : responseData;
-
-        if (productData is! Map) {
-          throw StateError(
-            'Product API trả về dữ liệu không hợp lệ: $productData',
-          );
-        }
-
-        return ProductResponse.fromJson(Map<String, dynamic>.from(productData));
+        return _parseProductResponse(response.data);
       }
 
       throw DioException(
@@ -148,36 +171,67 @@ class ProductService {
       );
     } on DioException catch (e, stackTrace) {
       developer.log('Error creating product', error: e, stackTrace: stackTrace);
-      developer.log('Response Status Code: ${e.response?.statusCode}');
-      developer.log('Response Data: ${e.response?.data}');
-      rethrow;
-    } catch (e, stackTrace) {
-      developer.log(
-        'Unexpected error creating product',
-        error: e,
-        stackTrace: stackTrace,
-      );
       rethrow;
     }
   }
 
-  Future<ProductResponse?> updateProduct(
+  Future<ProductResponse> updateProduct(
     int id,
-    ProductUpdateRequest request,
-  ) async {
+    ProductUpdateRequest request, {
+    File? imageFile,
+    bool removeImage = false,
+  }) async {
     try {
-      final response = await _client.put(
-        'products/$id',
-        data: request.toJson(),
-      );
-      if (response.statusCode == 200) {
-        final dynamic data = response.data['data'];
-        return ProductResponse.fromJson(data);
+      late final Response<dynamic> response;
+
+      if (imageFile != null || removeImage) {
+        final formData = FormData();
+        formData.files.add(
+          MapEntry(
+            'data',
+            MultipartFile.fromString(
+              jsonEncode(request.toJson()),
+              contentType: DioMediaType.parse('application/json'),
+            ),
+          ),
+        );
+
+        if (imageFile != null) {
+          formData.files.add(
+            MapEntry(
+              'image',
+              await MultipartFile.fromFile(
+                imageFile.path,
+                filename: imageFile.path.split(Platform.pathSeparator).last,
+              ),
+            ),
+          );
+        }
+
+        response = await _client.put(
+          'products/$id',
+          data: formData,
+          queryParameters: {'removeImage': removeImage},
+        );
+      } else {
+        response = await _client.put(
+          'products/$id',
+          data: request.toJson(),
+        );
       }
-      return null;
-    } catch (e) {
+
+      if (response.statusCode == 200) {
+        return _parseProductResponse(response.data);
+      }
+
+      throw DioException(
+        requestOptions: response.requestOptions,
+        response: response,
+        message: 'Không thể cập nhật sản phẩm',
+      );
+    } on DioException catch (e) {
       developer.log('Error updating product', error: e);
-      return null;
+      throw Exception(_messageFromDio(e, 'Không thể cập nhật sản phẩm'));
     }
   }
 
@@ -191,23 +245,9 @@ class ProductService {
           message: 'Không thể xóa sản phẩm',
         );
       }
-    } catch (e) {
+    } on DioException catch (e) {
       developer.log('Error deleting product', error: e);
-      rethrow;
-    }
-  }
-
-  Future<ProductResponse?> fetchProductById(int id) async {
-    try {
-      final response = await _client.get('products/$id');
-      if (response.statusCode == 200) {
-        final dynamic data = response.data['data'];
-        return ProductResponse.fromJson(data);
-      }
-      return null;
-    } catch (e) {
-      developer.log('Error fetching product', error: e);
-      return null;
+      throw Exception(_messageFromDio(e, 'Không thể xóa sản phẩm'));
     }
   }
 }
