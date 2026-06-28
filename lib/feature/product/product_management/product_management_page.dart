@@ -24,6 +24,8 @@ class _ProductManagementPageState extends State<ProductManagementPage> {
   final _categoryService = CategoryService();
   final _supplierService = SupplierService();
   final _searchController = TextEditingController();
+  final _tableHorizontalController = ScrollController();
+  final _tableVerticalController = ScrollController();
 
   Timer? _debounceTimer;
   ProductPageResponse? _productPage;
@@ -52,6 +54,8 @@ class _ProductManagementPageState extends State<ProductManagementPage> {
   void dispose() {
     _debounceTimer?.cancel();
     _searchController.dispose();
+    _tableHorizontalController.dispose();
+    _tableVerticalController.dispose();
     super.dispose();
   }
 
@@ -530,11 +534,18 @@ class _ProductManagementPageState extends State<ProductManagementPage> {
     final formatter = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
 
     return Scrollbar(
+      controller: _tableHorizontalController,
       thumbVisibility: true,
+      notificationPredicate: (notification) => notification.depth == 0,
       child: SingleChildScrollView(
+        controller: _tableHorizontalController,
         scrollDirection: Axis.horizontal,
-        child: SingleChildScrollView(
-          child: DataTable(
+        child: Scrollbar(
+          controller: _tableVerticalController,
+          thumbVisibility: true,
+          child: SingleChildScrollView(
+            controller: _tableVerticalController,
+            child: DataTable(
             headingTextStyle: const TextStyle(
               fontWeight: FontWeight.bold,
               color: AppColors.textPrimary,
@@ -583,6 +594,7 @@ class _ProductManagementPageState extends State<ProductManagementPage> {
                 ],
               );
             }).toList(),
+            ),
           ),
         ),
       ),

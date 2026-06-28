@@ -329,7 +329,7 @@ class _CreateProductPageState extends State<CreateProductPage> {
       if (!mounted) return;
 
       setState(() {
-        _unitLoadError = 'Không thể tải danh sách đơn vị.';
+        _unitLoadError = e.toString().replaceFirst('Exception: ', '');
       });
     } finally {
       if (mounted) {

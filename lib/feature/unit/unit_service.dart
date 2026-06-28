@@ -14,10 +14,16 @@ class UnitService {
         queryParameters: {if (type != null) 'type': type.name},
       );
 
-      final rawData = response.data['data'];
+      final rawData = response.data is Map<String, dynamic>
+          ? response.data['data']
+          : response.data;
 
-      if (response.statusCode != 200 || rawData is! List) {
+      if (response.statusCode != 200) {
         throw Exception('Không thể tải danh sách đơn vị');
+      }
+
+      if (rawData is! List) {
+        throw Exception('Danh sách đơn vị trả về không hợp lệ');
       }
 
       return rawData
@@ -27,9 +33,12 @@ class UnitService {
           )
           .toList();
     } on DioException catch (e) {
+      final serverMessage = e.response?.data is Map
+          ? e.response?.data['message']?.toString()
+          : null;
+
       throw Exception(
-        e.response?.data?['message']?.toString() ??
-            'Không thể kết nối đến API units',
+        serverMessage ?? e.message ?? 'Không thể tải danh sách đơn vị',
       );
     }
   }
