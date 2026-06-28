@@ -117,7 +117,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               : _LoadedProductDetail(
                   product: product,
                   onBack: () => context.go('/products'),
-                  onEdit: () => context.go('/products/${product.productId}/edit'),
+                  onEdit: () =>
+                      context.go('/products/${product.productId}/edit'),
                   onDelete: () => _deleteProduct(product),
                 ),
         ),
@@ -144,11 +145,7 @@ class _LoadedProductDetail extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _Header(
-          onBack: onBack,
-          onEdit: onEdit,
-          onDelete: onDelete,
-        ),
+        _Header(onBack: onBack, onEdit: onEdit, onDelete: onDelete),
         const SizedBox(height: 20),
         Expanded(
           child: SingleChildScrollView(
@@ -166,17 +163,12 @@ class _LoadedProductDetail extends StatelessWidget {
                   children: [
                     _BasicInfoCard(product: product),
                     const SizedBox(height: 16),
-                    _ImageCard(product: product),
                   ],
                 );
 
                 if (!isWide) {
                   return Column(
-                    children: [
-                      left,
-                      const SizedBox(height: 16),
-                      right,
-                    ],
+                    children: [left, const SizedBox(height: 16), right],
                   );
                 }
 
@@ -220,13 +212,18 @@ class _Header extends StatelessWidget {
           crossAxisAlignment: WrapCrossAlignment.end,
           children: [
             SizedBox(
-              width: compact ? constraints.maxWidth : constraints.maxWidth - 410,
+              width: compact
+                  ? constraints.maxWidth
+                  : constraints.maxWidth - 410,
               child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     'Dashboard > Quản lý sản phẩm > Chi tiết sản phẩm',
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
                   ),
                   SizedBox(height: 8),
                   Text(
@@ -240,7 +237,10 @@ class _Header extends StatelessWidget {
                   SizedBox(height: 4),
                   Text(
                     'Xem thông tin chi tiết của sản phẩm.',
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 14,
+                    ),
                   ),
                 ],
               ),
@@ -288,7 +288,10 @@ class _MainProductCard extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final compact = constraints.maxWidth < 620;
-          final image = _ProductImage(url: product.imageUrl, size: compact ? 180 : 210);
+          final image = _ProductImage(
+            url: product.imageUrl,
+            size: compact ? 180 : 210,
+          );
           final info = Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -317,11 +320,7 @@ class _MainProductCard extends StatelessWidget {
           if (compact) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                image,
-                const SizedBox(height: 18),
-                info,
-              ],
+              children: [image, const SizedBox(height: 18), info],
             );
           }
 
@@ -350,11 +349,32 @@ class _BasicInfoCard extends StatelessWidget {
       title: 'Thông tin cơ bản',
       child: Column(
         children: [
-          _InfoRow(icon: Icons.business_outlined, label: 'Nhà cung cấp', value: _supplierName(product)),
-          _InfoRow(icon: Icons.category_outlined, label: 'Danh mục', value: _fallback(product.categoryName)),
-          _InfoRow(icon: Icons.inventory_2_outlined, label: 'Đơn vị tính', value: _unitLabel(product)),
-          _InfoRow(icon: Icons.qr_code_2, label: 'Mã sản phẩm', value: _fallback(product.productCode)),
-          _InfoRow(icon: Icons.sell_outlined, label: 'SKU', value: _fallback(product.sku), isLast: true),
+          _InfoRow(
+            icon: Icons.business_outlined,
+            label: 'Nhà cung cấp',
+            value: _supplierName(product),
+          ),
+          _InfoRow(
+            icon: Icons.category_outlined,
+            label: 'Danh mục',
+            value: _fallback(product.categoryName),
+          ),
+          _InfoRow(
+            icon: Icons.inventory_2_outlined,
+            label: 'Đơn vị tính',
+            value: _unitLabel(product),
+          ),
+          _InfoRow(
+            icon: Icons.qr_code_2,
+            label: 'Mã sản phẩm',
+            value: _fallback(product.productCode),
+          ),
+          _InfoRow(
+            icon: Icons.sell_outlined,
+            label: 'SKU',
+            value: _fallback(product.sku),
+            isLast: true,
+          ),
         ],
       ),
     );
@@ -375,13 +395,41 @@ class _DetailsCard extends StatelessWidget {
         builder: (context, constraints) {
           final compact = constraints.maxWidth < 680;
           final items = [
-            _DetailItem(icon: Icons.payments_outlined, label: 'Giá bán', value: formatter.format(product.price)),
-            _DetailItem(icon: Icons.scale_outlined, label: 'Trọng lượng', value: _numberWithUnit(product.weight, 'KG')),
-            _DetailItem(icon: Icons.straighten_outlined, label: 'Kích thước', value: _dimensionLabel(product)),
-            _DetailItem(icon: Icons.warning_amber_rounded, label: 'Tồn kho tối thiểu', value: product.minStockLevel?.toString() ?? '—'),
-            _DetailItem(icon: Icons.business_outlined, label: 'Nhà cung cấp', value: _supplierName(product)),
-            _DetailItem(icon: Icons.category_outlined, label: 'Danh mục', value: _fallback(product.categoryName)),
-            _DetailItem(icon: Icons.inventory_2_outlined, label: 'Đơn vị tính', value: _unitLabel(product)),
+            _DetailItem(
+              icon: Icons.payments_outlined,
+              label: 'Giá bán',
+              value: formatter.format(product.price),
+            ),
+            _DetailItem(
+              icon: Icons.scale_outlined,
+              label: 'Trọng lượng',
+              value: _numberWithUnit(product.weight, 'KG'),
+            ),
+            _DetailItem(
+              icon: Icons.straighten_outlined,
+              label: 'Kích thước',
+              value: _dimensionLabel(product),
+            ),
+            _DetailItem(
+              icon: Icons.warning_amber_rounded,
+              label: 'Tồn kho tối thiểu',
+              value: product.minStockLevel?.toString() ?? '—',
+            ),
+            _DetailItem(
+              icon: Icons.business_outlined,
+              label: 'Nhà cung cấp',
+              value: _supplierName(product),
+            ),
+            _DetailItem(
+              icon: Icons.category_outlined,
+              label: 'Danh mục',
+              value: _fallback(product.categoryName),
+            ),
+            _DetailItem(
+              icon: Icons.inventory_2_outlined,
+              label: 'Đơn vị tính',
+              value: _unitLabel(product),
+            ),
           ];
 
           return Wrap(
@@ -390,30 +438,15 @@ class _DetailsCard extends StatelessWidget {
             children: items
                 .map(
                   (item) => SizedBox(
-                    width: compact ? constraints.maxWidth : (constraints.maxWidth - 18) / 2,
+                    width: compact
+                        ? constraints.maxWidth
+                        : (constraints.maxWidth - 18) / 2,
                     child: item,
                   ),
                 )
                 .toList(),
           );
         },
-      ),
-    );
-  }
-}
-
-class _ImageCard extends StatelessWidget {
-  final ProductResponse product;
-
-  const _ImageCard({required this.product});
-
-  @override
-  Widget build(BuildContext context) {
-    return _Card(
-      title: 'Hình ảnh sản phẩm',
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: _ProductImage(url: product.imageUrl, size: 120),
       ),
     );
   }
@@ -491,7 +524,11 @@ class _ProductImage extends StatelessWidget {
         color: const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Icon(Icons.inventory_2_outlined, size: size * 0.32, color: AppColors.textSecondary),
+      child: Icon(
+        Icons.inventory_2_outlined,
+        size: size * 0.32,
+        color: AppColors.textSecondary,
+      ),
     );
   }
 }
@@ -520,7 +557,10 @@ class _InfoRow extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -529,7 +569,10 @@ class _InfoRow extends StatelessWidget {
               value,
               textAlign: TextAlign.right,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -556,7 +599,10 @@ class _DetailItem extends StatelessWidget {
         Icon(icon, size: 18, color: AppColors.textSecondary),
         const SizedBox(width: 10),
         Expanded(
-          child: Text(label, style: const TextStyle(color: AppColors.textSecondary)),
+          child: Text(
+            label,
+            style: const TextStyle(color: AppColors.textSecondary),
+          ),
         ),
         const SizedBox(width: 10),
         Flexible(
@@ -564,7 +610,10 @@ class _DetailItem extends StatelessWidget {
             value,
             textAlign: TextAlign.right,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
           ),
         ),
       ],
@@ -587,7 +636,10 @@ class _Badge extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700),
+        style: const TextStyle(
+          color: AppColors.primary,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
@@ -600,7 +652,10 @@ class _MutedText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(text, style: const TextStyle(color: AppColors.textSecondary, fontSize: 14));
+    return Text(
+      text,
+      style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+    );
   }
 }
 
@@ -618,7 +673,11 @@ class _ErrorState extends StatelessWidget {
         children: [
           const Icon(Icons.error_outline, color: AppColors.danger, size: 52),
           const SizedBox(height: 14),
-          Text(message, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.danger)),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: AppColors.danger),
+          ),
           const SizedBox(height: 16),
           ElevatedButton.icon(
             onPressed: onRetry,
@@ -642,11 +701,18 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.inventory_2_outlined, color: AppColors.textSecondary, size: 52),
+          const Icon(
+            Icons.inventory_2_outlined,
+            color: AppColors.textSecondary,
+            size: 52,
+          ),
           const SizedBox(height: 14),
           const Text('Không tìm thấy sản phẩm'),
           const SizedBox(height: 16),
-          ElevatedButton(onPressed: onBack, child: const Text('Quay lại danh sách')),
+          ElevatedButton(
+            onPressed: onBack,
+            child: const Text('Quay lại danh sách'),
+          ),
         ],
       ),
     );
@@ -660,7 +726,8 @@ String _fallback(String? value) {
   return trimmed == null || trimmed.isEmpty ? '—' : trimmed;
 }
 
-String _supplierName(ProductResponse product) => _fallback(product.supplier?.supplierName);
+String _supplierName(ProductResponse product) =>
+    _fallback(product.supplier?.supplierName);
 
 String _unitLabel(ProductResponse product) {
   final code = product.baseUnitCode?.trim();

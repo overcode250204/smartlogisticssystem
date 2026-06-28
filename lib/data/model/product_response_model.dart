@@ -21,7 +21,8 @@ class ProductPageResponse {
 
   factory ProductPageResponse.fromJson(Map<String, dynamic> json) {
     return ProductPageResponse(
-      content: (json['content'] as List<dynamic>?)
+      content:
+          (json['content'] as List<dynamic>?)
               ?.map((e) => ProductResponse.fromJson(e as Map<String, dynamic>))
               .toList() ??
           const [],
@@ -81,7 +82,9 @@ class ProductResponse {
 
     return ProductResponse(
       productId: (json['productId'] as num?)?.toInt() ?? 0,
-      supplier: supplierJson != null ? SupplierSimpleResponse.fromJson(supplierJson) : null,
+      supplier: supplierJson != null
+          ? SupplierSimpleResponse.fromJson(supplierJson)
+          : null,
       productCode: json['productCode']?.toString() ?? '',
       productName: json['productName']?.toString() ?? '',
       sku: json['sku']?.toString() ?? '',

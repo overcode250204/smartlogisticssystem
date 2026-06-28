@@ -67,18 +67,7 @@ class Sidebar extends StatelessWidget {
       icon: Icons.north,
       allowedRoleIds: {AuthSession.adminRoleId, AuthSession.managerRoleId},
     ),
-    SidebarItem(
-      label: 'Nhà cung cấp',
-      route: '/suppliers',
-      icon: Icons.groups_outlined,
-      allowedRoleIds: {AuthSession.managerRoleId},
-    ),
-    SidebarItem(
-      label: 'Danh mục',
-      route: '/categories',
-      icon: Icons.category_outlined,
-      allowedRoleIds: {AuthSession.managerRoleId},
-    ),
+
     SidebarItem(
       label: 'Quản lý nhân sự',
       route: '/users',
@@ -121,8 +110,8 @@ class Sidebar extends StatelessWidget {
                         const SizedBox(height: 6),
                     itemBuilder: (context, index) {
                       final item = visibleItems[index];
-                      final isActive = item.route == '/' 
-                          ? currentLocation == '/' 
+                      final isActive = item.route == '/'
+                          ? currentLocation == '/'
                           : currentLocation.startsWith(item.route);
                       return _SidebarTile(
                         item: item,
