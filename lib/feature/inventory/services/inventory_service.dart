@@ -69,15 +69,24 @@ class InventoryDashboardData {
 
   int get lowStockCount => batches
       .where(
-        (batch) =>
-            batch.status == InventoryBatchStatus.LOW_STOCK ||
-            batch.remainingQuantity <=
-                (products
-                    .firstWhere(
-                      (p) => p.productId == batch.product?.productId,
-                      orElse: () => products.first,
-                    )
-                    .minStockLevel),
+        (batch) {
+          if (batch.status == InventoryBatchStatus.LOW_STOCK) {
+            return true;
+          }
+
+          final productId = batch.product?.productId;
+          if (productId == null) {
+            return false;
+          }
+
+          final matchingProducts = products.where((p) => p.productId == productId);
+          if (matchingProducts.isEmpty) {
+            return false;
+          }
+
+          final minStockLevel = matchingProducts.first.minStockLevel ?? 0;
+          return batch.remainingQuantity <= minStockLevel;
+        },
       )
       .length;
 }
