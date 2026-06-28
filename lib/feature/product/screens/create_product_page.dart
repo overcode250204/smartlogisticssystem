@@ -483,7 +483,7 @@ class _CreateProductPageState extends State<CreateProductPage> {
         ),
       );
 
-      context.go('/inventory');
+      context.go('/products');
     } on DioException catch (e) {
       if (!mounted) return;
 
@@ -650,7 +650,7 @@ class _CreateProductPageState extends State<CreateProductPage> {
                   children: [
                     _PageHeader(
                       isSubmitting: _isSubmitting,
-                      onBack: () => context.go('/inventory'),
+                      onBack: () => context.go('/products'),
                       onDraft: _saveDraft,
                       onSubmit: _submit,
                     ),
@@ -839,12 +839,12 @@ class _PageHeader extends StatelessWidget {
         // Breadcrumb
         Row(
           children: [
-            _Crumb(label: 'Dashboard', onTap: () => context.go('/inventory')),
+            _Crumb(label: 'Dashboard', onTap: () => context.go('/dashboard')),
             const _CrumbSep(),
-            _Crumb(label: 'Products', onTap: () => context.go('/inventory')),
+            _Crumb(label: 'Quản lý sản phẩm', onTap: () => context.go('/products')),
             const _CrumbSep(),
             const Text(
-              'Create Product',
+              'Tạo sản phẩm',
               style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 13,

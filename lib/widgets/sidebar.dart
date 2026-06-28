@@ -45,7 +45,7 @@ class Sidebar extends StatelessWidget {
     ),
     SidebarItem(
       label: 'Quản lí sản phẩm',
-      route: '/products/create',
+      route: '/products',
       icon: Icons.add_box_outlined,
       allowedRoleIds: {AuthSession.managerRoleId},
     ),
@@ -121,9 +121,12 @@ class Sidebar extends StatelessWidget {
                         const SizedBox(height: 6),
                     itemBuilder: (context, index) {
                       final item = visibleItems[index];
+                      final isActive = item.route == '/' 
+                          ? currentLocation == '/' 
+                          : currentLocation.startsWith(item.route);
                       return _SidebarTile(
                         item: item,
-                        isActive: currentLocation == item.route,
+                        isActive: isActive,
                         onTap: () => onNavigate(item.route),
                       );
                     },

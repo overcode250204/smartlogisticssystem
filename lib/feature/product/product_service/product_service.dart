@@ -36,6 +36,38 @@ class ProductService {
     }
   }
 
+  Future<ProductPageResponse> getProductsPage({
+    int page = 0,
+    int size = 10,
+    String? keyword,
+    int? categoryId,
+    int? supplierId,
+  }) async {
+    try {
+      final queryParameters = {
+        'page': page,
+        'size': size,
+        if (keyword != null && keyword.isNotEmpty) 'keyword': keyword,
+        if (categoryId != null) 'categoryId': categoryId,
+        if (supplierId != null) 'supplierId': supplierId,
+      };
+      
+      final response = await _client.get(
+        'products/page',
+        queryParameters: queryParameters,
+      );
+      
+      if (response.statusCode == 200) {
+        final dynamic data = response.data['data'];
+        return ProductPageResponse.fromJson(data);
+      }
+      throw Exception('Failed to load product page');
+    } catch (e) {
+      developer.log('Error in getProductsPage', error: e);
+      rethrow;
+    }
+  }
+
   Future<ProductResponse> createProduct(
     ProductCreateRequest request, {
     File? imageFile,

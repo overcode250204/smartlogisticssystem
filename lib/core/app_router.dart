@@ -13,6 +13,7 @@ import 'package:smartlogisticssystem/feature/inventory/screens/import_page.dart'
 import 'package:smartlogisticssystem/feature/inventory/screens/inventory_management_screen.dart';
 import 'package:smartlogisticssystem/feature/supplier/screens/suppliers_page.dart';
 import 'package:smartlogisticssystem/feature/product/screens/create_product_page.dart';
+import 'package:smartlogisticssystem/feature/product/product_management/product_management_page.dart';
 import 'package:smartlogisticssystem/feature/category/screens/categories_page.dart';
 import 'package:smartlogisticssystem/feature/inventory/screens/barcode_scan_page.dart';
 import 'package:smartlogisticssystem/feature/inventory/screens/staff_batch_detail_page.dart';
@@ -98,9 +99,16 @@ final appRouter = GoRouter(
               const NoTransitionPage(child: ImportPage()),
         ),
         GoRoute(
-          path: '/products/create',
+          path: '/products',
           pageBuilder: (context, state) =>
-              const NoTransitionPage(child: CreateProductPage()),
+              const NoTransitionPage(child: ProductManagementPage()),
+          routes: [
+            GoRoute(
+              path: 'create',
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: CreateProductPage()),
+            ),
+          ],
         ),
         GoRoute(
           path: '/export',
@@ -170,6 +178,7 @@ String _titleForPath(String path) {
     '/categories' => 'Danh mục',
     '/users' => 'Quản lý nhân sự',
     '/settings' => 'Cài đặt',
+    '/products' => 'Quản lý sản phẩm',
     '/products/create' => 'Tạo sản phẩm',
     _ => 'Smart Logistics',
   };
