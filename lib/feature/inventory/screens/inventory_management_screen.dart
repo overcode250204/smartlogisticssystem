@@ -6,7 +6,6 @@ import 'package:smartlogisticssystem/data/model/inventory_transaction_response_m
 import 'package:smartlogisticssystem/data/model/product_response_model.dart';
 import 'package:smartlogisticssystem/feature/inventory/services/inventory_service.dart';
 import 'package:smartlogisticssystem/widgets/dashboard_widgets.dart';
-import 'package:smartlogisticssystem/feature/product/screens/create_product_dialog.dart';
 
 class InventoryManagementScreen extends StatefulWidget {
   const InventoryManagementScreen({super.key});
@@ -43,24 +42,6 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
     setState(() {
       _future = _service.fetchDashboardData();
     });
-  }
-
-  Future<void> _openCreateProductDialog() async {
-    final product = await showDialog<ProductResponse>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const CreateProductDialog(),
-    );
-
-    if (product == null || !mounted) return;
-
-    _reloadData();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Đã tạo sản phẩm ${product.productName}'),
-        backgroundColor: AppColors.success,
-      ),
-    );
   }
 
   void _showBatchHint() {
@@ -157,12 +138,6 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
             children: [
               _StatsGrid(data: data),
               const SizedBox(height: 22),
-              _InventoryTabs(
-                data: data,
-                searchController: _searchController,
-                searchQuery: _searchQuery,
-                onCreateProduct: _openCreateProductDialog,
-              ),
             ],
           ),
         );
@@ -288,12 +263,12 @@ class _StatsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lowStockCount = data.batches
-        .where((b) {
-          final p = data.products.where((p) => p.productId == b.product?.productId).firstOrNull;
-          return b.remainingQuantity <= (p?.minStockLevel ?? 0);
-        })
-        .length;
+    final lowStockCount = data.batches.where((b) {
+      final p = data.products
+          .where((p) => p.productId == b.product?.productId)
+          .firstOrNull;
+      return b.remainingQuantity <= (p?.minStockLevel ?? 0);
+    }).length;
 
     final cards = [
       StatCard(
@@ -614,8 +589,7 @@ class _BottomGrid extends StatelessWidget {
 
     final upcomingExpiringBatches = data.batches.where((b) {
       return b.expirationDate.isBefore(fifteenDaysFromNow);
-    }).toList()
-      ..sort((a, b) => a.expirationDate.compareTo(b.expirationDate));
+    }).toList()..sort((a, b) => a.expirationDate.compareTo(b.expirationDate));
 
     final lowBatches = upcomingExpiringBatches.take(3).toList();
     final transactions = data.transactions.take(3).toList();
