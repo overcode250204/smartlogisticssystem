@@ -114,7 +114,6 @@ class _CreateProductPageState extends State<CreateProductPage> {
   final _unitService = UnitService();
 
   List<UnitResponse> _allUnits = [];
-  List<UnitResponse> _weightUnits = [];
   List<UnitResponse> _dimensionUnits = [];
   List<UnitResponse> _quantityUnits = [];
   List<UnitResponse> _volumeUnits = [];
@@ -145,7 +144,6 @@ class _CreateProductPageState extends State<CreateProductPage> {
   final _lengthCtrl = TextEditingController();
   final _widthCtrl = TextEditingController();
   final _heightCtrl = TextEditingController();
-  UnitResponse? _selectedWeightUnit;
   UnitResponse? _selectedDimensionUnit;
 
   // Status
@@ -188,10 +186,6 @@ class _CreateProductPageState extends State<CreateProductPage> {
         for (final unit in apiUnits) unit.id: unit,
       }.values.toList();
 
-      final weightUnits = uniqueById
-          .where((unit) => unit.type == UnitType.WEIGHT)
-          .toList();
-
       final dimensionUnits = uniqueById
           .where((unit) => unit.type == UnitType.DIMENSION)
           .toList();
@@ -211,7 +205,6 @@ class _CreateProductPageState extends State<CreateProductPage> {
         );
       }
 
-      debugPrint('Weight: ${weightUnits.map((e) => e.code).join(", ")}');
       debugPrint('Dimension: ${dimensionUnits.map((e) => e.code).join(", ")}');
       debugPrint('Quantity: ${quantityUnits.map((e) => e.code).join(", ")}');
       debugPrint('Volume: ${volumeUnits.map((e) => e.code).join(", ")}');
@@ -220,12 +213,9 @@ class _CreateProductPageState extends State<CreateProductPage> {
 
       setState(() {
         _allUnits = uniqueById;
-        _weightUnits = weightUnits;
         _dimensionUnits = dimensionUnits;
         _quantityUnits = quantityUnits;
         _volumeUnits = volumeUnits;
-
-        _selectedWeightUnit = weightUnits.isNotEmpty ? weightUnits.first : null;
 
         _selectedDimensionUnit = dimensionUnits.isNotEmpty
             ? dimensionUnits.first
@@ -645,7 +635,7 @@ class _CreateProductPageState extends State<CreateProductPage> {
           reorderCtrl: _reorderCtrl,
           initialQtyCtrl: _initialQtyCtrl,
           currency: _currency,
-          quantityOptions: allUnitOptions,
+          quantityOptions: quantityOptions,
           selectedBaseUnit: _selectedBaseUnit,
           onCurrencyChanged: (v) => setState(() => _currency = v!),
           onBaseUnitChanged: _onBaseUnitChanged,
@@ -657,11 +647,8 @@ class _CreateProductPageState extends State<CreateProductPage> {
           lengthCtrl: _lengthCtrl,
           widthCtrl: _widthCtrl,
           heightCtrl: _heightCtrl,
-          weightUnits: _weightUnits,
           dimensionUnits: _allUnits,
-          weightUnit: _selectedWeightUnit,
           dimUnit: _selectedDimensionUnit,
-          onWeightUnitChanged: (v) => setState(() => _selectedWeightUnit = v),
           onDimUnitChanged: (v) => setState(() => _selectedDimensionUnit = v),
         ),
         const SizedBox(height: 20),
@@ -1409,25 +1396,16 @@ class _DimensionsSection extends StatelessWidget {
   final TextEditingController widthCtrl;
   final TextEditingController heightCtrl;
 
-  final List<UnitResponse> weightUnits;
   final List<UnitResponse> dimensionUnits;
-
-  final UnitResponse? weightUnit;
   final UnitResponse? dimUnit;
-
-  final ValueChanged<UnitResponse?> onWeightUnitChanged;
   final ValueChanged<UnitResponse?> onDimUnitChanged;
-
   const _DimensionsSection({
     required this.weightCtrl,
     required this.lengthCtrl,
     required this.widthCtrl,
     required this.heightCtrl,
-    required this.weightUnits,
     required this.dimensionUnits,
-    required this.weightUnit,
     required this.dimUnit,
-    required this.onWeightUnitChanged,
     required this.onDimUnitChanged,
   });
 
@@ -1447,7 +1425,6 @@ class _DimensionsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final safeWeightUnit = _safeSelectedUnit(weightUnit, weightUnits);
     final safeDimUnit = _safeSelectedUnit(dimUnit, dimensionUnits);
 
     return _SectionCard(
@@ -1456,61 +1433,29 @@ class _DimensionsSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Row 1: Weight + Weight Unit
-          _FormRow(
-            children: [
-              _FormField(
-                label: 'Weight',
-                child: TextFormField(
-                  controller: weightCtrl,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                  ],
-                  decoration: const InputDecoration(hintText: '0.000'),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return null;
-                    final n = double.tryParse(v.trim());
-                    if (n != null && n < 0) return 'Must be ≥ 0';
-                    return null;
-                  },
-                ),
+          _FormField(
+            label: 'Weight',
+            fullWidth: true,
+            child: TextFormField(
+              controller: weightCtrl,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
               ),
-              _FormField(
-                label: 'Weight Unit',
-                child: DropdownButtonFormField<UnitResponse>(
-                  value: safeWeightUnit,
-                  isExpanded: true,
-                  decoration: const InputDecoration(),
-                  selectedItemBuilder: (context) {
-                    return weightUnits
-                        .map(
-                          (u) => Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              u.code,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        )
-                        .toList();
-                  },
-                  items: weightUnits
-                      .map(
-                        (u) => DropdownMenuItem<UnitResponse>(
-                          value: u,
-                          child: Text(
-                            '${u.name} (${u.code})',
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: onWeightUnitChanged,
-                ),
-              ),
-            ],
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+              ],
+              decoration: const InputDecoration(hintText: '0.000'),
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return null;
+
+                final n = double.tryParse(v.trim());
+                if (n == null || n < 0) {
+                  return 'Must be a valid number ≥ 0';
+                }
+
+                return null;
+              },
+            ),
           ),
           const SizedBox(height: 16),
           // Row 2: L + W + H + Dim Unit

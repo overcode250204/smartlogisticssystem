@@ -47,7 +47,10 @@ class SupplierService {
     }
   }
 
-  Future<SupplierResponse> updateSupplier(int id, SupplierUpdateRequest request) async {
+  Future<SupplierResponse> updateSupplier(
+    int id,
+    SupplierUpdateRequest request,
+  ) async {
     try {
       final response = await _client.put(
         'suppliers/$id',
