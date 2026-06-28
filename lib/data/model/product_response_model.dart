@@ -25,10 +25,10 @@ class ProductPageResponse {
               ?.map((e) => ProductResponse.fromJson(e as Map<String, dynamic>))
               .toList() ??
           const [],
-      page: json['page'] as int? ?? 0,
-      size: json['size'] as int? ?? 10,
-      totalElements: json['totalElements'] as int? ?? 0,
-      totalPages: json['totalPages'] as int? ?? 0,
+      page: (json['page'] as num?)?.toInt() ?? 0,
+      size: (json['size'] as num?)?.toInt() ?? 10,
+      totalElements: (json['totalElements'] as num?)?.toInt() ?? 0,
+      totalPages: (json['totalPages'] as num?)?.toInt() ?? 0,
       first: json['first'] as bool? ?? false,
       last: json['last'] as bool? ?? false,
     );
@@ -43,7 +43,7 @@ class ProductResponse {
   final String sku;
   final int? categoryId;
   final String? categoryName;
-  final int minStockLevel;
+  final int? minStockLevel;
   final double price;
   final double? weight;
   final double? length;
@@ -62,7 +62,7 @@ class ProductResponse {
     required this.sku,
     this.categoryId,
     this.categoryName,
-    required this.minStockLevel,
+    this.minStockLevel,
     required this.price,
     this.weight,
     this.length,
@@ -80,23 +80,33 @@ class ProductResponse {
     final baseUnitJson = json['baseUnit'] as Map<String, dynamic>?;
 
     return ProductResponse(
-      productId: json['productId'] as int? ?? 0,
+      productId: (json['productId'] as num?)?.toInt() ?? 0,
       supplier: supplierJson != null ? SupplierSimpleResponse.fromJson(supplierJson) : null,
       productCode: json['productCode']?.toString() ?? '',
       productName: json['productName']?.toString() ?? '',
       sku: json['sku']?.toString() ?? '',
-      categoryId: categoryJson != null ? categoryJson['categoryId'] as int? : json['categoryId'] as int?,
-      categoryName: categoryJson != null ? categoryJson['categoryName']?.toString() : json['categoryName']?.toString(),
-      minStockLevel: json['minStockLevel'] as int? ?? 0,
+      categoryId: categoryJson != null
+          ? (categoryJson['categoryId'] as num?)?.toInt()
+          : (json['categoryId'] as num?)?.toInt(),
+      categoryName: categoryJson != null
+          ? categoryJson['categoryName']?.toString()
+          : json['categoryName']?.toString(),
+      minStockLevel: (json['minStockLevel'] as num?)?.toInt(),
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
       weight: (json['weight'] as num?)?.toDouble(),
       length: (json['length'] as num?)?.toDouble(),
       width: (json['width'] as num?)?.toDouble(),
       height: (json['height'] as num?)?.toDouble(),
       imageUrl: json['imageUrl']?.toString(),
-      baseUnitId: baseUnitJson != null ? baseUnitJson['unitId'] as int? : json['baseUnitId'] as int?,
-      baseUnitCode: baseUnitJson != null ? baseUnitJson['unitCode']?.toString() : json['baseUnitCode']?.toString(),
-      baseUnitName: baseUnitJson != null ? baseUnitJson['unitName']?.toString() : json['baseUnitName']?.toString(),
+      baseUnitId: baseUnitJson != null
+          ? (baseUnitJson['id'] as num?)?.toInt()
+          : (json['baseUnitId'] as num?)?.toInt(),
+      baseUnitCode: baseUnitJson != null
+          ? baseUnitJson['code']?.toString()
+          : json['baseUnitCode']?.toString(),
+      baseUnitName: baseUnitJson != null
+          ? baseUnitJson['name']?.toString()
+          : json['baseUnitName']?.toString(),
     );
   }
 }

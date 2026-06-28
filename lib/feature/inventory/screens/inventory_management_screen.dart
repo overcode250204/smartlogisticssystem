@@ -476,7 +476,7 @@ class _ProductsTab extends StatelessWidget {
         DataCell(Text(product.productName)),
         DataCell(Text(product.supplier?.supplierName ?? "")),
         DataCell(Text(product.categoryName ?? "")),
-        DataCell(Text(product.minStockLevel.toString())),
+        DataCell(Text(product.minStockLevel?.toString() ?? '')),
         DataCell(Text(product.weight != null ? '${product.weight} kg' : '')),
         DataCell(Text(currencyFormatter.format(product.price))),
         DataCell(

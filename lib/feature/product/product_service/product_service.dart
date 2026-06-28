@@ -59,7 +59,13 @@ class ProductService {
       
       if (response.statusCode == 200) {
         final dynamic data = response.data['data'];
-        return ProductPageResponse.fromJson(data);
+        if (data is Map<String, dynamic>) {
+          return ProductPageResponse.fromJson(data);
+        }
+        if (data is Map) {
+          return ProductPageResponse.fromJson(Map<String, dynamic>.from(data));
+        }
+        throw StateError('Product page response is invalid: $data');
       }
       throw Exception('Failed to load product page');
     } catch (e) {
@@ -175,17 +181,19 @@ class ProductService {
     }
   }
 
-  Future<ProductResponse?> deleteProduct(int id) async {
+  Future<void> deleteProduct(int id) async {
     try {
       final response = await _client.delete('products/$id');
-      if (response.statusCode == 200) {
-        final dynamic data = response.data['data'];
-        return ProductResponse.fromJson(data);
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        throw DioException(
+          requestOptions: response.requestOptions,
+          response: response,
+          message: 'Không thể xóa sản phẩm',
+        );
       }
-      return null;
     } catch (e) {
       developer.log('Error deleting product', error: e);
-      return null;
+      rethrow;
     }
   }
 

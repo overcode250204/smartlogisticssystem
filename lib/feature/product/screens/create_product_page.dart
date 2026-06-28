@@ -888,7 +888,7 @@ class _PageHeader extends StatelessWidget {
                 OutlinedButton.icon(
                   onPressed: onBack,
                   icon: const Icon(Icons.arrow_back, size: 16),
-                  label: const Text('Back'),
+                  label: const Text('Quay lại'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.textSecondary,
                     side: const BorderSide(color: AppColors.border),
