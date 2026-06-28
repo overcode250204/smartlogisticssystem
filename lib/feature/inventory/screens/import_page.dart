@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:smartlogisticssystem/core/app_theme.dart';
-import 'package:smartlogisticssystem/data/model/inventory_batch_status.dart';
 import 'package:smartlogisticssystem/data/model/inventory_batch_response_model.dart';
 import 'package:smartlogisticssystem/data/model/inventory_batch_request_model.dart';
 import 'package:smartlogisticssystem/data/model/product_response_model.dart';
@@ -140,23 +139,27 @@ class _ImportPageState extends State<ImportPage> {
   }
 
   String? _quantityValidator(String? value) {
-    if (value == null || value.trim().isEmpty) return 'Bắt buộc nhập';
+    if (value == null || value.trim().isEmpty) return 'Vui lòng nhập số lượng';
     final qty = int.tryParse(value.trim());
-    if (qty == null || qty <= 0) return 'Số lượng > 0';
+    if (qty == null || qty <= 0) return 'Số lượng phải lớn hơn 0';
     return null;
   }
 
   String? _expirationValidator(String? value) {
-    if (value == null || value.trim().isEmpty) return 'Bắt buộc nhập';
+    if (value == null || value.trim().isEmpty) {
+      return 'Vui lòng chọn ngày hết hạn';
+    }
     if (_expirationDate != null && _expirationDate!.isBefore(_importDate)) {
-      return 'Phải sau ngày nhập';
+      return 'Ngày hết hạn không được trước ngày tạo';
     }
     return null;
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedProduct == null) return;
+    if (_selectedProduct == null) {
+      return;
+    }
 
     setState(() {
       _isSubmitting = true;
@@ -167,7 +170,7 @@ class _ImportPageState extends State<ImportPage> {
       final quantity = int.parse(_quantityController.text.trim());
 
       final batch = InventoryBatchCreateRequest(
-        productId: _selectedProduct!.productId!,
+        productId: _selectedProduct!.productId,
         quantity: quantity,
         remainingQuantity: quantity,
         importDate: _importDate,
@@ -307,273 +310,48 @@ class _ImportPageState extends State<ImportPage> {
     }
 
     return PageScroll(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          DashboardCard(
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SectionTitle('Tạo mã vạch lô hàng'),
-                  const SizedBox(height: 18),
-                  Wrap(
-                    spacing: 16,
-                    runSpacing: 16,
-                    children: [
-                      _FieldBox(
-                        child: DropdownButtonFormField<ProductResponse>(
-                          initialValue: _selectedProduct,
-                          decoration: const InputDecoration(
-                            labelText: 'Chọn sản phẩm',
-                            prefixIcon: Icon(Icons.inventory_2_outlined),
-                          ),
-                          items: _products
-                              .map(
-                                (product) => DropdownMenuItem(
-                                  value: product,
-                                  child: Text(
-                                    '${product.productCode} - ${product.productName}',
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: _isSubmitting ? null : _onProductChanged,
-                          validator: (value) =>
-                              value == null ? 'Vui lòng chọn sản phẩm' : null,
-                        ),
-                      ),
-                      _FieldBox(
-                        child: TextFormField(
-                          controller: _supplierController,
-                          readOnly: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Nhà cung cấp',
-                            prefixIcon: Icon(Icons.business_outlined),
-                          ),
-                        ),
-                      ),
-                      _FieldBox(
-                        child: TextFormField(
-                          controller: _quantityController,
-                          enabled: !_isSubmitting,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Số lượng',
-                            prefixIcon: Icon(Icons.add_box_outlined),
-                          ),
-                          validator: _quantityValidator,
-                        ),
-                      ),
-                      _FieldBox(
-                        child: TextFormField(
-                          controller: _importDateController,
-                          readOnly: true,
-                          enabled: !_isSubmitting,
-                          decoration: const InputDecoration(
-                            labelText: 'Ngày tạo',
-                            prefixIcon: Icon(Icons.calendar_month_outlined),
-                          ),
-                          onTap: _isSubmitting ? null : _pickImportDate,
-                        ),
-                      ),
-                      _FieldBox(
-                        child: TextFormField(
-                          controller: _expirationDateController,
-                          readOnly: true,
-                          enabled: !_isSubmitting,
-                          decoration: const InputDecoration(
-                            labelText: 'Ngày hết hạn',
-                            prefixIcon: Icon(Icons.event_busy_outlined),
-                          ),
-                          onTap: _isSubmitting ? null : _pickExpirationDate,
-                          validator: _expirationValidator,
-                        ),
-                      ),
-
-                      _FieldBox(
-                        width: 616,
-                        child: TextFormField(
-                          controller: _noteController,
-                          enabled: !_isSubmitting,
-                          decoration: const InputDecoration(
-                            labelText: 'Ghi chú',
-                            prefixIcon: Icon(Icons.notes_outlined),
-                          ),
-                        ),
-                      ),
-                      _FieldBox(
-                        child: InkWell(
-                          onTap: _isSubmitting
-                              ? null
-                              : () {
-                                  setState(() {
-                                    _received = !_received;
-                                  });
-                                },
-                          borderRadius: BorderRadius.circular(8),
-                          child: Container(
-                            height: 56, // Match standard input height
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
-                              ),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              children: [
-                                Checkbox(
-                                  value: _received,
-                                  onChanged: _isSubmitting
-                                      ? null
-                                      : (value) {
-                                          setState(() {
-                                            _received = value ?? false;
-                                          });
-                                        },
-                                ),
-                                const SizedBox(width: 8),
-                                const Text('Đã nhận', style: TextStyle(color: AppColors.textPrimary)),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (_errorMessage != null) ...[
-                    const SizedBox(height: 14),
-                    _InlineError(message: _errorMessage!),
-                  ],
-                  const SizedBox(height: 18),
-                  ElevatedButton.icon(
-                    onPressed: _isSubmitting ? null : _submit,
-                    icon: _isSubmitting
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.qr_code_scanner),
-                    label: Text(_isSubmitting ? 'Đang tạo...' : 'Tạo mã vạch'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ],
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1040),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              BarcodeBatchForm(
+                formKey: _formKey,
+                products: _products,
+                selectedProduct: _selectedProduct,
+                quantityController: _quantityController,
+                importDateController: _importDateController,
+                expirationDateController: _expirationDateController,
+                supplierController: _supplierController,
+                noteController: _noteController,
+                received: _received,
+                isSubmitting: _isSubmitting,
+                errorMessage: _errorMessage,
+                onProductChanged: _onProductChanged,
+                onImportDateTap: _pickImportDate,
+                onExpirationDateTap: _pickExpirationDate,
+                onReceivedChanged: (value) {
+                  setState(() {
+                    _received = value;
+                  });
+                },
+                onSubmit: _submit,
+                quantityValidator: _quantityValidator,
+                expirationValidator: _expirationValidator,
               ),
-            ),
+              const SizedBox(height: 24),
+              BarcodeHistoryTable(
+                batches: _batches,
+                products: _products,
+                errorMessage: _errorMessage,
+                confirmingBatchId: _confirmingBatchId,
+                onReload: _loadData,
+                onConfirmReceived: _confirmReceived,
+              ),
+            ],
           ),
-          const SizedBox(height: 18),
-          DashboardCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SectionTitle('Lịch sử tạo mã vạch gần đây'),
-                const SizedBox(height: 12),
-                DarkTable(
-                  columns: const [
-                    DataColumn(label: Text('Mã lô')),
-                    DataColumn(label: Text('Sản phẩm')),
-                    DataColumn(label: Text('Số lượng')),
-                    DataColumn(label: Text('Ngày tạo')),
-                    DataColumn(label: Text('Đã nhận')),
-                  ],
-                  rows:
-                      (_batches.toList()..sort(
-                            (a, b) => b.importDate.compareTo(a.importDate),
-                          ))
-                          .take(5)
-                          .map(
-                            (batch) => DataRow(
-                              cells: [
-                                DataCell(Text('LH${batch.batchId ?? ''}')),
-                                DataCell(
-                                  Text(
-                                    (batch.product?.productName ?? "") ?? '',
-                                  ),
-                                ),
-                                DataCell(Text(batch.quantity.toString())),
-                                DataCell(
-                                  Text(dateFormatter.format(batch.importDate)),
-                                ),
-                                DataCell(
-                                  batch.received
-                                      ? Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 6,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.textSecondary.withValues(alpha: 0.12),
-                                            borderRadius: BorderRadius.circular(8),
-                                            border: Border.all(
-                                              color: AppColors.textSecondary.withValues(alpha: 0.3),
-                                            ),
-                                          ),
-                                          child: const Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(
-                                                Icons.check_circle,
-                                                color: AppColors.textSecondary,
-                                                size: 16,
-                                              ),
-                                              SizedBox(width: 4),
-                                              Text(
-                                                'Đã nhận',
-                                                style: TextStyle(
-                                                  color: AppColors.textSecondary,
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        )
-                                      : ElevatedButton.icon(
-                                          onPressed: _confirmingBatchId != null
-                                              ? null
-                                              : () => _confirmReceived(batch.batchId),
-                                          icon: _confirmingBatchId == batch.batchId
-                                              ? const SizedBox(
-                                                  width: 14,
-                                                  height: 14,
-                                                  child: CircularProgressIndicator(
-                                                    strokeWidth: 2,
-                                                    color: Colors.white,
-                                                  ),
-                                                )
-                                              : const Icon(Icons.check, size: 14),
-                                          label: const Text('Xác nhận'),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: AppColors.success,
-                                            foregroundColor: Colors.white,
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 10,
-                                              vertical: 8,
-                                            ),
-                                            minimumSize: Size.zero,
-                                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(6),
-                                            ),
-                                          ),
-                                        ),
-                                ),
-                              ],
-                            ),
-                          )
-                          .toList(),
-                ),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -653,14 +431,645 @@ class _InlineError extends StatelessWidget {
   }
 }
 
-class _FieldBox extends StatelessWidget {
-  final double width;
-  final Widget child;
+class BarcodeBatchForm extends StatelessWidget {
+  final GlobalKey<FormState> formKey;
+  final List<ProductResponse> products;
+  final ProductResponse? selectedProduct;
+  final TextEditingController quantityController;
+  final TextEditingController importDateController;
+  final TextEditingController expirationDateController;
+  final TextEditingController supplierController;
+  final TextEditingController noteController;
+  final bool received;
+  final bool isSubmitting;
+  final String? errorMessage;
+  final ValueChanged<ProductResponse?> onProductChanged;
+  final VoidCallback onImportDateTap;
+  final VoidCallback onExpirationDateTap;
+  final ValueChanged<bool> onReceivedChanged;
+  final VoidCallback onSubmit;
+  final FormFieldValidator<String> quantityValidator;
+  final FormFieldValidator<String> expirationValidator;
 
-  const _FieldBox({required this.child, this.width = 300});
+  const BarcodeBatchForm({
+    super.key,
+    required this.formKey,
+    required this.products,
+    required this.selectedProduct,
+    required this.quantityController,
+    required this.importDateController,
+    required this.expirationDateController,
+    required this.supplierController,
+    required this.noteController,
+    required this.received,
+    required this.isSubmitting,
+    required this.errorMessage,
+    required this.onProductChanged,
+    required this.onImportDateTap,
+    required this.onExpirationDateTap,
+    required this.onReceivedChanged,
+    required this.onSubmit,
+    required this.quantityValidator,
+    required this.expirationValidator,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(width: width, child: child);
+    return DashboardCard(
+      padding: const EdgeInsets.all(24),
+      child: Form(
+        key: formKey,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 760;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _LargeSectionTitle('Tạo mã vạch lô hàng'),
+                const SizedBox(height: 24),
+                _ResponsiveFieldRow(
+                  isNarrow: isNarrow,
+                  children: [
+                    ProductSelectorField(
+                      products: products,
+                      selectedProduct: selectedProduct,
+                      enabled: !isSubmitting,
+                      onChanged: onProductChanged,
+                    ),
+                    SupplierSelectorField(controller: supplierController),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _ResponsiveFieldRow(
+                  isNarrow: isNarrow,
+                  children: [
+                    TextFormField(
+                      controller: quantityController,
+                      enabled: !isSubmitting,
+                      keyboardType: TextInputType.number,
+                      style: _fieldTextStyle,
+                      decoration: const InputDecoration(
+                        labelText: 'Số lượng',
+                        prefixIcon: Icon(Icons.add_box_outlined),
+                      ),
+                      validator: quantityValidator,
+                    ),
+                    TextFormField(
+                      controller: importDateController,
+                      readOnly: true,
+                      enabled: !isSubmitting,
+                      style: _fieldTextStyle,
+                      decoration: const InputDecoration(
+                        labelText: 'Ngày tạo',
+                        prefixIcon: Icon(Icons.calendar_month_outlined),
+                        suffixIcon: Icon(Icons.arrow_drop_down_rounded),
+                      ),
+                      onTap: isSubmitting ? null : onImportDateTap,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _ResponsiveFieldRow(
+                  isNarrow: isNarrow,
+                  children: [
+                    TextFormField(
+                      controller: expirationDateController,
+                      readOnly: true,
+                      enabled: !isSubmitting,
+                      style: _fieldTextStyle,
+                      decoration: const InputDecoration(
+                        labelText: 'Ngày hết hạn',
+                        prefixIcon: Icon(Icons.event_busy_outlined),
+                        suffixIcon: Icon(Icons.arrow_drop_down_rounded),
+                      ),
+                      onTap: isSubmitting ? null : onExpirationDateTap,
+                      validator: expirationValidator,
+                    ),
+                    if (!isNarrow) const SizedBox.shrink(),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: noteController,
+                  enabled: !isSubmitting,
+                  minLines: 1,
+                  maxLines: 3,
+                  style: _fieldTextStyle,
+                  decoration: const InputDecoration(
+                    labelText: 'Ghi chú',
+                    prefixIcon: Icon(Icons.notes_outlined),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ReceivedCheckbox(
+                  value: received,
+                  enabled: !isSubmitting,
+                  onChanged: onReceivedChanged,
+                ),
+                if (errorMessage != null) ...[
+                  const SizedBox(height: 16),
+                  _InlineError(message: errorMessage!),
+                ],
+                const SizedBox(height: 20),
+                Align(
+                  alignment: isNarrow
+                      ? Alignment.center
+                      : Alignment.centerRight,
+                  child: SizedBox(
+                    width: isNarrow ? double.infinity : 220,
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      onPressed: isSubmitting ? null : onSubmit,
+                      icon: isSubmitting
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.qr_code_scanner_rounded),
+                      label: Text(isSubmitting ? 'Đang tạo...' : 'Tạo mã vạch'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        textStyle: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
   }
 }
+
+class ProductSelectorField extends StatelessWidget {
+  final List<ProductResponse> products;
+  final ProductResponse? selectedProduct;
+  final bool enabled;
+  final ValueChanged<ProductResponse?> onChanged;
+
+  const ProductSelectorField({
+    super.key,
+    required this.products,
+    required this.selectedProduct,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<ProductResponse>(
+      initialValue: selectedProduct,
+      isExpanded: true,
+      menuMaxHeight: 360,
+      decoration: const InputDecoration(
+        labelText: 'Chọn sản phẩm',
+        prefixIcon: Icon(Icons.inventory_2_outlined),
+      ),
+      selectedItemBuilder: (context) => products
+          .map(
+            (product) => Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                product.productName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: _fieldTextStyle,
+              ),
+            ),
+          )
+          .toList(),
+      items: products
+          .map(
+            (product) => DropdownMenuItem(
+              value: product,
+              child: _ProductMenuItem(product: product),
+            ),
+          )
+          .toList(),
+      onChanged: enabled ? onChanged : null,
+      validator: (value) => value == null ? 'Vui lòng chọn sản phẩm' : null,
+    );
+  }
+}
+
+class SupplierSelectorField extends StatelessWidget {
+  final TextEditingController controller;
+
+  const SupplierSelectorField({super.key, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller,
+      readOnly: true,
+      style: _fieldTextStyle,
+      decoration: const InputDecoration(
+        labelText: 'Nhà cung cấp',
+        prefixIcon: Icon(Icons.business_outlined),
+      ),
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return 'Nhà cung cấp chưa có dữ liệu';
+        }
+        return null;
+      },
+    );
+  }
+}
+
+class ReceivedCheckbox extends StatelessWidget {
+  final bool value;
+  final bool enabled;
+  final ValueChanged<bool> onChanged;
+
+  const ReceivedCheckbox({
+    super.key,
+    required this.value,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return CheckboxListTile(
+      value: value,
+      onChanged: enabled ? (next) => onChanged(next ?? false) : null,
+      contentPadding: EdgeInsets.zero,
+      dense: true,
+      controlAffinity: ListTileControlAffinity.leading,
+      visualDensity: VisualDensity.compact,
+      title: const Text(
+        'Lô hàng đã được nhận vào kho',
+        style: TextStyle(
+          color: AppColors.textPrimary,
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+class BarcodeHistoryTable extends StatelessWidget {
+  final List<InventoryBatchResponse> batches;
+  final List<ProductResponse> products;
+  final String? errorMessage;
+  final int? confirmingBatchId;
+  final VoidCallback onReload;
+  final ValueChanged<int> onConfirmReceived;
+
+  const BarcodeHistoryTable({
+    super.key,
+    required this.batches,
+    required this.products,
+    required this.errorMessage,
+    required this.confirmingBatchId,
+    required this.onReload,
+    required this.onConfirmReceived,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final recentBatches = batches.toList()
+      ..sort((a, b) => b.importDate.compareTo(a.importDate));
+
+    return DashboardCard(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: _LargeSectionTitle('Lịch sử tạo mã vạch gần đây'),
+              ),
+              Tooltip(
+                message: 'Tải lại lịch sử',
+                child: IconButton(
+                  onPressed: onReload,
+                  icon: const Icon(Icons.refresh_rounded),
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (errorMessage != null && batches.isEmpty)
+            _HistoryMessage(
+              icon: Icons.error_outline_rounded,
+              title: 'Không thể tải lịch sử',
+              message: errorMessage!,
+            )
+          else if (recentBatches.isEmpty)
+            const _HistoryMessage(
+              icon: Icons.inventory_2_outlined,
+              title: 'Chưa có lịch sử tạo mã vạch',
+              message: 'Các lô hàng mới tạo sẽ hiển thị tại đây.',
+            )
+          else
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                headingRowColor: WidgetStateProperty.all(
+                  AppColors.darkest.withValues(alpha: 0.9),
+                ),
+                columnSpacing: 28,
+                horizontalMargin: 16,
+                dataRowMinHeight: 56,
+                dataRowMaxHeight: 64,
+                columns: const [
+                  DataColumn(label: Text('Mã lô')),
+                  DataColumn(label: Text('Sản phẩm')),
+                  DataColumn(label: Text('Số lượng')),
+                  DataColumn(label: Text('Nhà cung cấp')),
+                  DataColumn(label: Text('Ngày tạo')),
+                  DataColumn(label: Text('Trạng thái')),
+                ],
+                rows: recentBatches.take(8).map(_buildRow).toList(),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  DataRow _buildRow(InventoryBatchResponse batch) {
+    final product = batch.product;
+    final supplierName =
+        products
+            .where((item) => item.productId == product?.productId)
+            .firstOrNull
+            ?.supplier
+            ?.supplierName ??
+        'Chưa có';
+
+    return DataRow(
+      cells: [
+        DataCell(Text('LH${batch.batchId}')),
+        DataCell(_EllipsisCell(product?.productName ?? 'Không có dữ liệu')),
+        DataCell(Text(batch.quantity.toString())),
+        DataCell(_EllipsisCell(supplierName)),
+        DataCell(Text(dateFormatter.format(batch.importDate))),
+        DataCell(
+          batch.received
+              ? const _ReceivedStatusChip(received: true)
+              : _ConfirmReceivedButton(
+                  isLoading: confirmingBatchId == batch.batchId,
+                  isDisabled: confirmingBatchId != null,
+                  onPressed: () => onConfirmReceived(batch.batchId),
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ResponsiveFieldRow extends StatelessWidget {
+  final bool isNarrow;
+  final List<Widget> children;
+
+  const _ResponsiveFieldRow({required this.isNarrow, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    if (isNarrow) {
+      return Column(
+        children: [
+          for (var index = 0; index < children.length; index++) ...[
+            SizedBox(width: double.infinity, child: children[index]),
+            if (index != children.length - 1) const SizedBox(height: 16),
+          ],
+        ],
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: children[0]),
+        const SizedBox(width: 16),
+        Expanded(child: children[1]),
+      ],
+    );
+  }
+}
+
+class _ProductMenuItem extends StatelessWidget {
+  final ProductResponse product;
+
+  const _ProductMenuItem({required this.product});
+
+  @override
+  Widget build(BuildContext context) {
+    final code = product.sku.isNotEmpty ? product.sku : product.productCode;
+    return Tooltip(
+      message: '${product.productName}${code.isEmpty ? '' : ' - $code'}',
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              product.productName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: _fieldTextStyle.copyWith(fontWeight: FontWeight.w700),
+            ),
+            if (code.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(
+                code,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ConfirmReceivedButton extends StatelessWidget {
+  final bool isLoading;
+  final bool isDisabled;
+  final VoidCallback onPressed;
+
+  const _ConfirmReceivedButton({
+    required this.isLoading,
+    required this.isDisabled,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton.icon(
+      onPressed: isDisabled ? null : onPressed,
+      icon: isLoading
+          ? const SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            )
+          : const Icon(Icons.check_rounded, size: 16),
+      label: const Text('Xác nhận'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.success,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+      ),
+    );
+  }
+}
+
+class _ReceivedStatusChip extends StatelessWidget {
+  final bool received;
+
+  const _ReceivedStatusChip({required this.received});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = received ? AppColors.success : AppColors.warning;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.28)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            received ? Icons.check_circle_rounded : Icons.schedule_rounded,
+            color: color,
+            size: 16,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            received ? 'Đã nhận' : 'Chưa nhận',
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EllipsisCell extends StatelessWidget {
+  final String value;
+
+  const _EllipsisCell(this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: value,
+      child: SizedBox(
+        width: 190,
+        child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis),
+      ),
+    );
+  }
+}
+
+class _HistoryMessage extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String message;
+
+  const _HistoryMessage({
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+      decoration: BoxDecoration(
+        color: AppColors.darkest,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: AppColors.textSecondary, size: 36),
+          const SizedBox(height: 10),
+          Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LargeSectionTitle extends StatelessWidget {
+  final String title;
+
+  const _LargeSectionTitle(this.title);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      style: const TextStyle(
+        color: AppColors.textPrimary,
+        fontSize: 22,
+        fontWeight: FontWeight.w900,
+      ),
+    );
+  }
+}
+
+const _fieldTextStyle = TextStyle(
+  color: AppColors.textPrimary,
+  fontSize: 15,
+  fontWeight: FontWeight.w500,
+);

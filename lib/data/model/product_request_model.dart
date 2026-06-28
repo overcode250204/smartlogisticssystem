@@ -6,7 +6,10 @@ class ProductCreateRequest {
   final double? length;
   final double? width;
   final double? height;
-  final int? baseUnitId;
+
+  // Bắt buộc khi tạo Product.
+  final int baseUnitId;
+
   final int? minStockLevel;
   final int supplierId;
   final int categoryId;
@@ -19,7 +22,7 @@ class ProductCreateRequest {
     this.length,
     this.width,
     this.height,
-    this.baseUnitId,
+    required this.baseUnitId,
     this.minStockLevel,
     required this.supplierId,
     required this.categoryId,
@@ -34,7 +37,10 @@ class ProductCreateRequest {
       if (length != null) 'length': length,
       if (width != null) 'width': width,
       if (height != null) 'height': height,
-      if (baseUnitId != null) 'baseUnitId': baseUnitId,
+
+      // Luôn gửi ID Unit đã chọn cho Product.baseUnit.
+      'baseUnitId': baseUnitId,
+
       if (minStockLevel != null) 'minStockLevel': minStockLevel,
       'supplierId': supplierId,
       'categoryId': categoryId,

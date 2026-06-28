@@ -16,7 +16,7 @@ class SupplierResponse {
   factory SupplierResponse.fromJson(Map<String, dynamic> json) {
     return SupplierResponse(
       supplierId: json['supplierId'] as int? ?? 0,
-      supplierName: json['supplierName']?.toString() ?? json['name']?.toString() ?? '',
+      supplierName: json['supplierName']?.toString() ?? '',
       contactPhone: json['contactPhone']?.toString(),
       address: json['address']?.toString(),
       createdAt: _parseDateTime(json['createdAt']),
@@ -42,7 +42,7 @@ class SupplierSimpleResponse {
   factory SupplierSimpleResponse.fromJson(Map<String, dynamic> json) {
     return SupplierSimpleResponse(
       supplierId: json['supplierId'] as int? ?? 0,
-      supplierName: json['supplierName']?.toString() ?? json['name']?.toString() ?? '',
+      supplierName: json['supplierName']?.toString() ?? '',
     );
   }
 }
