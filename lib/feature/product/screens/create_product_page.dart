@@ -686,7 +686,6 @@ class _CreateProductPageState extends State<CreateProductPage> {
   }
 
   Widget _leftColumn() {
-    final quantityOptions = _toDistinctDropdownOptions(_quantityUnits);
     final categoryOptions = _categories
         .map(
           (category) => _DropdownOption(
@@ -739,10 +738,7 @@ class _CreateProductPageState extends State<CreateProductPage> {
           reorderCtrl: _reorderCtrl,
           initialQtyCtrl: _initialQtyCtrl,
           currency: _currency,
-          quantityOptions: quantityOptions,
-          selectedBaseUnit: _selectedBaseUnit,
           onCurrencyChanged: (v) => setState(() => _currency = v!),
-          onBaseUnitChanged: _onBaseUnitChanged,
         ),
         const SizedBox(height: 20),
 
@@ -1390,17 +1386,13 @@ class _ImagePreviewPlaceholder extends StatelessWidget {
 }
 
 // ─── Pricing & Stock ─────────────────────────────────────────────────────────
-
 class _PricingStockSection extends StatelessWidget {
   final TextEditingController priceCtrl;
   final TextEditingController minStockCtrl;
   final TextEditingController reorderCtrl;
   final TextEditingController initialQtyCtrl;
   final String currency;
-  final List<_DropdownOption> quantityOptions;
-  final _DropdownOption? selectedBaseUnit;
   final ValueChanged<String?> onCurrencyChanged;
-  final ValueChanged<_DropdownOption?> onBaseUnitChanged;
 
   const _PricingStockSection({
     required this.priceCtrl,
@@ -1408,21 +1400,15 @@ class _PricingStockSection extends StatelessWidget {
     required this.reorderCtrl,
     required this.initialQtyCtrl,
     required this.currency,
-    required this.quantityOptions,
-    required this.selectedBaseUnit,
     required this.onCurrencyChanged,
-    required this.onBaseUnitChanged,
   });
 
   @override
   Widget build(BuildContext context) {
-    final safeBaseUnit = _safeSelectedOption(selectedBaseUnit, quantityOptions);
-
     return _SectionCard(
       title: 'Pricing & Stock Settings',
       child: Column(
         children: [
-          // Row 1: Price + Currency
           _FormRow(
             children: [
               _FormField(
@@ -1443,8 +1429,12 @@ class _PricingStockSection extends StatelessWidget {
                     if (v == null || v.trim().isEmpty) {
                       return 'Price is required';
                     }
-                    final n = double.tryParse(v.trim());
-                    if (n == null || n < 0) return 'Enter a valid price ≥ 0';
+
+                    final value = double.tryParse(v.trim());
+                    if (value == null || value < 0) {
+                      return 'Enter a valid price ≥ 0';
+                    }
+
                     return null;
                   },
                 ),
@@ -1454,7 +1444,10 @@ class _PricingStockSection extends StatelessWidget {
                 child: DropdownButtonFormField<String>(
                   value: currency,
                   items: _kCurrencies
-                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                      .map(
+                        (item) =>
+                            DropdownMenuItem(value: item, child: Text(item)),
+                      )
                       .toList(),
                   onChanged: onCurrencyChanged,
                   decoration: const InputDecoration(),
@@ -1463,49 +1456,31 @@ class _PricingStockSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          // Row 2: Base Unit + Min Stock
-          _FormRow(
-            children: [
-              _FormField(
-                label: 'Base Unit *',
-                child: DropdownButtonFormField<_DropdownOption>(
-                  value: safeBaseUnit,
-                  decoration: const InputDecoration(
-                    hintText: 'Select base unit',
-                  ),
-                  items: quantityOptions
-                      .map(
-                        (option) => DropdownMenuItem(
-                          value: option,
-                          child: Text(option.label),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: onBaseUnitChanged,
-                  validator: (v) => v == null ? 'Base unit is required' : null,
-                ),
-              ),
-              _FormField(
-                label: 'Minimum Stock Level *',
-                child: TextFormField(
-                  controller: minStockCtrl,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  decoration: const InputDecoration(hintText: '0'),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) {
-                      return 'Min stock is required';
-                    }
-                    final n = int.tryParse(v.trim());
-                    if (n == null || n < 0) return 'Must be ≥ 0';
-                    return null;
-                  },
-                ),
-              ),
-            ],
+
+          _FormField(
+            label: 'Minimum Stock Level *',
+            fullWidth: true,
+            child: TextFormField(
+              controller: minStockCtrl,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: const InputDecoration(hintText: '0'),
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) {
+                  return 'Min stock is required';
+                }
+
+                final value = int.tryParse(v.trim());
+                if (value == null || value < 0) {
+                  return 'Must be ≥ 0';
+                }
+
+                return null;
+              },
+            ),
           ),
           const SizedBox(height: 16),
-          // Row 3: Reorder + Initial Qty
+
           _FormRow(
             children: [
               _FormField(
@@ -1515,12 +1490,6 @@ class _PricingStockSection extends StatelessWidget {
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   decoration: const InputDecoration(hintText: '0'),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return null;
-                    final n = int.tryParse(v.trim());
-                    if (n != null && n < 0) return 'Must be ≥ 0';
-                    return null;
-                  },
                 ),
               ),
               _FormField(
@@ -1530,12 +1499,6 @@ class _PricingStockSection extends StatelessWidget {
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   decoration: const InputDecoration(hintText: '0'),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return null;
-                    final n = int.tryParse(v.trim());
-                    if (n != null && n < 0) return 'Must be ≥ 0';
-                    return null;
-                  },
                 ),
               ),
             ],
@@ -1545,7 +1508,6 @@ class _PricingStockSection extends StatelessWidget {
     );
   }
 }
-
 // ─── Dimensions ───────────────────────────────────────────────────────────────
 
 class _DimensionsSection extends StatelessWidget {
@@ -2040,27 +2002,6 @@ class _ProductPreviewCard extends StatelessWidget {
           if (supplier != null)
             _PreviewRow(label: 'Supplier', value: supplier!),
           _PreviewRow(label: 'Price', value: displayPrice),
-          if (baseUnit != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Row(
-                children: [
-                  const Text(
-                    'Base Unit  ',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 13,
-                    ),
-                  ),
-                  _Badge(
-                    label: baseUnit!.code.isEmpty
-                        ? baseUnit!.label
-                        : baseUnit!.code,
-                    color: AppColors.info,
-                  ),
-                ],
-              ),
-            ),
         ],
       ),
     );
