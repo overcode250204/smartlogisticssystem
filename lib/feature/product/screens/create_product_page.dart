@@ -11,21 +11,11 @@ import 'package:smartlogisticssystem/data/model/product_request_model.dart';
 import 'package:smartlogisticssystem/data/model/unit_response.dart';
 import 'package:smartlogisticssystem/feature/product/product_service/product_service.dart';
 import 'package:smartlogisticssystem/feature/unit/unit_service.dart';
-
+import 'package:smartlogisticssystem/data/model/supplier_response_model.dart';
+import 'package:smartlogisticssystem/feature/supplier/service/supplier_service.dart';
+import 'package:smartlogisticssystem/data/model/product_category_model.dart';
+import 'package:smartlogisticssystem/feature/category/service/category_service.dart';
 // ─── Mock data ───────────────────────────────────────────────────────────────
-
-const _kCategories = [
-  _DropdownOption(id: 1, label: 'Office Furniture'),
-  _DropdownOption(id: 2, label: 'Electronics'),
-  _DropdownOption(id: 3, label: 'Packaging Materials'),
-  _DropdownOption(id: 4, label: 'Food & Beverage'),
-];
-
-const _kSuppliers = [
-  _DropdownOption(id: 1, label: 'Office Supplies Co.'),
-  _DropdownOption(id: 2, label: 'Global Logistics Supplier'),
-  _DropdownOption(id: 3, label: 'Smart Warehouse Partner'),
-];
 
 const _kCurrencies = ['USD', 'VND', 'EUR'];
 
@@ -112,7 +102,15 @@ class _CreateProductPageState extends State<CreateProductPage> {
   final _formKey = GlobalKey<FormState>();
   final _productService = ProductService();
   final _unitService = UnitService();
+  final _supplierService = SupplierService();
+  final _categoryService = CategoryService();
 
+  List<ProductCategoryResponse> _categories = [];
+  bool _isLoadingCategories = true;
+  String? _categoryLoadError;
+  List<SupplierResponse> _suppliers = [];
+  bool _isLoadingSuppliers = true;
+  String? _supplierLoadError;
   List<UnitResponse> _allUnits = [];
   List<UnitResponse> _dimensionUnits = [];
   List<UnitResponse> _quantityUnits = [];
@@ -159,6 +157,8 @@ class _CreateProductPageState extends State<CreateProductPage> {
   void initState() {
     super.initState();
     _loadUnits();
+    _loadSuppliers();
+    _loadCategories();
     // Rebuild live preview on any text change
     for (final c in [
       _nameCtrl,
@@ -170,6 +170,84 @@ class _CreateProductPageState extends State<CreateProductPage> {
       _heightCtrl,
     ]) {
       c.addListener(() => setState(() {}));
+    }
+  }
+
+  Future<void> _loadCategories() async {
+    setState(() {
+      _isLoadingCategories = true;
+      _categoryLoadError = null;
+    });
+
+    try {
+      final categories = await _categoryService.getAllCategories();
+
+      if (!mounted) return;
+
+      setState(() {
+        _categories = categories;
+      });
+
+      for (final category in categories) {
+        debugPrint(
+          'CATEGORY: id=${category.categoryId}, '
+          'name=${category.categoryName}',
+        );
+      }
+    } catch (e, stackTrace) {
+      debugPrint('Load categories error: $e');
+      debugPrintStack(stackTrace: stackTrace);
+
+      if (!mounted) return;
+
+      setState(() {
+        _categoryLoadError = 'Không thể tải danh sách danh mục.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingCategories = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadSuppliers() async {
+    setState(() {
+      _isLoadingSuppliers = true;
+      _supplierLoadError = null;
+    });
+
+    try {
+      final suppliers = await _supplierService.getAllSuppliers();
+
+      if (!mounted) return;
+
+      setState(() {
+        _suppliers = suppliers;
+      });
+
+      for (final supplier in suppliers) {
+        debugPrint(
+          'SUPPLIER: id=${supplier.supplierId}, '
+          'name=${supplier.supplierName}',
+        );
+      }
+    } catch (e, stackTrace) {
+      debugPrint('Load suppliers error: $e');
+      debugPrintStack(stackTrace: stackTrace);
+
+      if (!mounted) return;
+
+      setState(() {
+        _supplierLoadError = 'Không thể tải danh sách nhà cung cấp.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingSuppliers = false;
+        });
+      }
     }
   }
 
@@ -609,7 +687,23 @@ class _CreateProductPageState extends State<CreateProductPage> {
 
   Widget _leftColumn() {
     final quantityOptions = _toDistinctDropdownOptions(_quantityUnits);
-    final allUnitOptions = _toDistinctDropdownOptions(_allUnits);
+    final categoryOptions = _categories
+        .map(
+          (category) => _DropdownOption(
+            id: category.categoryId,
+            label: category.categoryName,
+            code: category.categoryCode,
+          ),
+        )
+        .toList();
+    final supplierOptions = _suppliers
+        .map(
+          (supplier) => _DropdownOption(
+            id: supplier.supplierId,
+            label: supplier.supplierName,
+          ),
+        )
+        .toList();
 
     return Column(
       children: [
@@ -622,8 +716,18 @@ class _CreateProductPageState extends State<CreateProductPage> {
           selectedImageName: _selectedImageName,
           onPickImage: _pickProductImage,
           onRemoveImage: _removeProductImage,
+
           selectedCategory: _selectedCategory,
           selectedSupplier: _selectedSupplier,
+
+          categoryOptions: categoryOptions,
+          isLoadingCategories: _isLoadingCategories,
+          categoryLoadError: _categoryLoadError,
+
+          supplierOptions: supplierOptions,
+          isLoadingSuppliers: _isLoadingSuppliers,
+          supplierLoadError: _supplierLoadError,
+
           onCategoryChanged: (v) => setState(() => _selectedCategory = v),
           onSupplierChanged: (v) => setState(() => _selectedSupplier = v),
         ),
@@ -967,17 +1071,21 @@ class _BasicInformationSection extends StatelessWidget {
   final TextEditingController codeCtrl;
   final TextEditingController skuCtrl;
   final TextEditingController descCtrl;
+  final _DropdownOption? selectedCategory;
+  final _DropdownOption? selectedSupplier;
 
+  final List<_DropdownOption> categoryOptions;
+  final bool isLoadingCategories;
+  final String? categoryLoadError;
+  final ValueChanged<_DropdownOption?> onCategoryChanged;
+  final ValueChanged<_DropdownOption?> onSupplierChanged;
+  final List<_DropdownOption> supplierOptions;
+  final bool isLoadingSuppliers;
+  final String? supplierLoadError;
   final File? selectedImageFile;
   final String? selectedImageName;
   final Future<void> Function() onPickImage;
   final VoidCallback onRemoveImage;
-
-  final _DropdownOption? selectedCategory;
-  final _DropdownOption? selectedSupplier;
-  final ValueChanged<_DropdownOption?> onCategoryChanged;
-  final ValueChanged<_DropdownOption?> onSupplierChanged;
-
   const _BasicInformationSection({
     required this.nameCtrl,
     required this.codeCtrl,
@@ -987,8 +1095,18 @@ class _BasicInformationSection extends StatelessWidget {
     required this.selectedImageName,
     required this.onPickImage,
     required this.onRemoveImage,
+
     required this.selectedCategory,
     required this.selectedSupplier,
+
+    required this.categoryOptions,
+    required this.isLoadingCategories,
+    required this.categoryLoadError,
+
+    required this.supplierOptions,
+    required this.isLoadingSuppliers,
+    required this.supplierLoadError,
+
     required this.onCategoryChanged,
     required this.onSupplierChanged,
   });
@@ -1043,17 +1161,35 @@ class _BasicInformationSection extends StatelessWidget {
               _FormField(
                 label: 'Category *',
                 child: DropdownButtonFormField<_DropdownOption>(
-                  value: selectedCategory,
-                  decoration: const InputDecoration(
-                    hintText: 'Select category',
+                  value: _safeSelectedOption(selectedCategory, categoryOptions),
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    hintText: isLoadingCategories
+                        ? 'Đang tải danh mục...'
+                        : categoryLoadError != null
+                        ? 'Không thể tải danh mục'
+                        : 'Chọn danh mục',
                   ),
-                  items: _kCategories
+                  items: categoryOptions
                       .map(
-                        (c) => DropdownMenuItem(value: c, child: Text(c.label)),
+                        (category) => DropdownMenuItem<_DropdownOption>(
+                          value: category,
+                          child: Text(
+                            category.label,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       )
                       .toList(),
-                  onChanged: onCategoryChanged,
-                  validator: (v) => v == null ? 'Category is required' : null,
+                  onChanged: isLoadingCategories || categoryLoadError != null
+                      ? null
+                      : onCategoryChanged,
+                  validator: (value) {
+                    if (value == null) {
+                      return 'Category is required';
+                    }
+                    return null;
+                  },
                 ),
               ),
             ],
@@ -1064,13 +1200,35 @@ class _BasicInformationSection extends StatelessWidget {
             label: 'Supplier *',
             fullWidth: true,
             child: DropdownButtonFormField<_DropdownOption>(
-              value: selectedSupplier,
-              decoration: const InputDecoration(hintText: 'Select supplier'),
-              items: _kSuppliers
-                  .map((s) => DropdownMenuItem(value: s, child: Text(s.label)))
+              value: _safeSelectedOption(selectedSupplier, supplierOptions),
+              isExpanded: true,
+              decoration: InputDecoration(
+                hintText: isLoadingSuppliers
+                    ? 'Đang tải nhà cung cấp...'
+                    : supplierLoadError != null
+                    ? 'Không thể tải nhà cung cấp'
+                    : 'Chọn nhà cung cấp',
+              ),
+              items: supplierOptions
+                  .map(
+                    (supplier) => DropdownMenuItem<_DropdownOption>(
+                      value: supplier,
+                      child: Text(
+                        supplier.label,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  )
                   .toList(),
-              onChanged: onSupplierChanged,
-              validator: (v) => v == null ? 'Supplier is required' : null,
+              onChanged: isLoadingSuppliers || supplierLoadError != null
+                  ? null
+                  : onSupplierChanged,
+              validator: (value) {
+                if (value == null) {
+                  return 'Supplier is required';
+                }
+                return null;
+              },
             ),
           ),
           const SizedBox(height: 16),
