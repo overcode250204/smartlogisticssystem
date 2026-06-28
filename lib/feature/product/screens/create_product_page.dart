@@ -638,48 +638,33 @@ class _CreateProductPageState extends State<CreateProductPage> {
           onSupplierChanged: (v) => setState(() => _selectedSupplier = v),
         ),
         const SizedBox(height: 20),
-        _ProductUnitsSection(
-          units: _units,
-          baseUnit: _selectedBaseUnit,
+
+        _PricingStockSection(
+          priceCtrl: _priceCtrl,
+          minStockCtrl: _minStockCtrl,
+          reorderCtrl: _reorderCtrl,
+          initialQtyCtrl: _initialQtyCtrl,
+          currency: _currency,
           quantityOptions: allUnitOptions,
-          onAddUnit: _addUnit,
-          onRemoveUnit: _removeUnit,
-          onUnitChanged: _onUnitChanged,
-          onFactorChanged: (id, factor) {
-            setState(() {
-              final u = _units.firstWhere((u) => u.id == id);
-              u.conversionFactor = factor;
-            });
-          },
+          selectedBaseUnit: _selectedBaseUnit,
+          onCurrencyChanged: (v) => setState(() => _currency = v!),
+          onBaseUnitChanged: _onBaseUnitChanged,
         ),
         const SizedBox(height: 20),
+
         _DimensionsSection(
           weightCtrl: _weightCtrl,
           lengthCtrl: _lengthCtrl,
           widthCtrl: _widthCtrl,
           heightCtrl: _heightCtrl,
           weightUnits: _weightUnits,
-          dimensionUnits: _dimensionUnits,
+          dimensionUnits: _allUnits,
           weightUnit: _selectedWeightUnit,
           dimUnit: _selectedDimensionUnit,
           onWeightUnitChanged: (v) => setState(() => _selectedWeightUnit = v),
           onDimUnitChanged: (v) => setState(() => _selectedDimensionUnit = v),
         ),
         const SizedBox(height: 20),
-        _ProductUnitsSection(
-          units: _units,
-          baseUnit: _selectedBaseUnit,
-          quantityOptions: quantityOptions,
-          onAddUnit: _addUnit,
-          onRemoveUnit: _removeUnit,
-          onUnitChanged: _onUnitChanged,
-          onFactorChanged: (id, factor) {
-            setState(() {
-              final u = _units.firstWhere((u) => u.id == id);
-              u.conversionFactor = factor;
-            });
-          },
-        ),
       ],
     );
   }
@@ -1739,19 +1724,28 @@ class _ProductUnitsSection extends StatelessWidget {
                 DataCell(Text('${idx + 1}')),
                 DataCell(
                   isBase
-                      ? Row(
-                          children: [
-                            Text(u.unit.label),
-                            const SizedBox(width: 8),
-                            const _Badge(
-                              label: 'Base Unit',
-                              color: AppColors.info,
-                            ),
-                          ],
+                      ? SizedBox(
+                          width: 220,
+                          child: Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  u.unit.label,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const _Badge(
+                                label: 'Base Unit',
+                                color: AppColors.info,
+                              ),
+                            ],
+                          ),
                         )
                       : SizedBox(
-                          width: 160,
+                          width: 220,
                           child: DropdownButtonFormField<_DropdownOption>(
+                            isExpanded: true,
                             value: safeUnit,
                             decoration: const InputDecoration(
                               isDense: true,
@@ -1764,7 +1758,10 @@ class _ProductUnitsSection extends StatelessWidget {
                                 .map(
                                   (opt) => DropdownMenuItem(
                                     value: opt,
-                                    child: Text(opt.label),
+                                    child: Text(
+                                      opt.label,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
                                 )
                                 .toList(),
@@ -1774,9 +1771,9 @@ class _ProductUnitsSection extends StatelessWidget {
                 ),
                 DataCell(
                   isBase
-                      ? const Text('1.0000')
+                      ? const SizedBox(width: 150, child: Text('1.0000'))
                       : SizedBox(
-                          width: 120,
+                          width: 150,
                           child: TextFormField(
                             initialValue: u.conversionFactor.toStringAsFixed(4),
                             keyboardType: const TextInputType.numberWithOptions(
@@ -1801,35 +1798,37 @@ class _ProductUnitsSection extends StatelessWidget {
                           ),
                         ),
                 ),
-                DataCell(Text(equiv)),
+                DataCell(
+                  SizedBox(
+                    width: 210,
+                    child: Text(equiv, overflow: TextOverflow.ellipsis),
+                  ),
+                ),
                 DataCell(
                   isBase
-                      ? const Text(
-                          '—',
-                          style: TextStyle(color: AppColors.textSecondary),
+                      ? const SizedBox(
+                          width: 70,
+                          child: Text(
+                            '—',
+                            style: TextStyle(color: AppColors.textSecondary),
+                          ),
                         )
-                      : Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(
-                                Icons.edit_outlined,
-                                size: 18,
-                                color: AppColors.info,
+                      : SizedBox(
+                          width: 70,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  size: 18,
+                                  color: AppColors.danger,
+                                ),
+                                tooltip: 'Remove',
+                                onPressed: () => onRemoveUnit(u.id),
                               ),
-                              tooltip: 'Edit',
-                              onPressed: () {},
-                            ),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.delete_outline,
-                                size: 18,
-                                color: AppColors.danger,
-                              ),
-                              tooltip: 'Remove',
-                              onPressed: () => onRemoveUnit(u.id),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                 ),
               ],
