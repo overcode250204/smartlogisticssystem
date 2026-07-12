@@ -3,15 +3,34 @@ import 'package:smartlogisticssystem/data/model/linehaul_trip_driver_model.dart'
 import 'package:smartlogisticssystem/data/model/pallet_model.dart';
 import 'package:smartlogisticssystem/data/model/vehicle_model.dart';
 
+enum LinehaulTripStatus {
+  PREPARING,
+  CAN_START,
+  EN_ROUTE,
+  ARRIVED,
+  CANCELLED;
+
+  String get displayName {
+    return switch (this) {
+      LinehaulTripStatus.PREPARING => 'Chuẩn bị',
+      LinehaulTripStatus.EN_ROUTE => 'Trên đường đi',
+      LinehaulTripStatus.ARRIVED => 'Đã tới nơi',
+      LinehaulTripStatus.CANCELLED => 'Hủy',
+      LinehaulTripStatus.CAN_START => 'Đợi xe và tài xế',
+    };
+  }
+}
+
 class LinehaulTripModel {
   final int? linehaulId;
   final RouteConfigModel? routeConfig;
   final List<LinehaulTripDriverModel>? linehaulTripDriver;
   final List<PalletModel>? pallets;
   final VehicleModel? vehicle;
-  final String? status;
-  final String? departureTime;
-  final String? arrivalTime;
+  final LinehaulTripStatus? status;
+  final DateTime? departureTime;
+  final DateTime? arrivalTime;
+  final String? linehaultripCode;
 
   LinehaulTripModel({
     this.linehaulId,
@@ -22,6 +41,7 @@ class LinehaulTripModel {
     this.status,
     this.departureTime,
     this.arrivalTime,
+    this.linehaultripCode,
   });
 
   factory LinehaulTripModel.fromJson(Map<String, dynamic> json) {
@@ -35,9 +55,10 @@ class LinehaulTripModel {
           ? (json['pallets'] as List).map((i) => PalletModel.fromJson(i)).toList()
           : null,
       vehicle: json['vehicle'] != null ? VehicleModel.fromJson(json['vehicle']) : null,
-      status: json['status'],
-      departureTime: json['departureTime'],
-      arrivalTime: json['arrivalTime'],
+      status: json['status'] != null ? LinehaulTripStatus.values.firstWhere((e) => e.name == json['status']) : null,
+      departureTime: _toDateTime(json['departureTime']),
+      arrivalTime: _toDateTime(json['arrivalTime']),
+      linehaultripCode: json['linehaulTripCode'],
     );
   }
 
@@ -48,4 +69,9 @@ class LinehaulTripModel {
     if (value is String) return int.tryParse(value);
     return null;
   }
+
+   static DateTime? _toDateTime(dynamic value) {
+    if (value == null) return null;
+    return DateTime.parse(value);
+   }
 }

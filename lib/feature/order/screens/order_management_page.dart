@@ -163,9 +163,39 @@ class _OrderManagementPageState extends State<OrderManagementPage> {
                 _DetailRow(label: 'Trạng thái', value: _statusBadge(order.status)),
                 _DetailRow(label: 'Khách hàng', value: Text(order.customerName, style: const TextStyle(fontWeight: FontWeight.bold))),
                 _DetailRow(label: 'Số điện thoại', value: Text(order.phone)),
-                _DetailRow(label: 'Địa chỉ giao hàng', value: Text(order.deliveryAddress)),
-                _DetailRow(label: 'Tỉnh/Thành phố', value: Text(order.deliveryProvince)),
-                _DetailRow(label: 'Kinh độ/Vĩ độ', value: Text('${order.longitude} / ${order.latitude}')),
+                if (order.expectedDeliveryTime != null && order.expectedDeliveryTime!.isNotEmpty) ...[
+                   _DetailRow(
+                     label: 'Hạn giao cam kết (SLA)',
+                     value: Builder(builder: (context) {
+                       try {
+                         return Text(
+                           DateFormat('dd/MM/yyyy HH:mm').format(DateTime.parse(order.expectedDeliveryTime!)),
+                           style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.orange),
+                         );
+                       } catch (_) {
+                         return Text(order.expectedDeliveryTime!);
+                       }
+                     }),
+                   ),
+                 ],
+                 if (order.actualDeliveryTime != null && order.actualDeliveryTime!.isNotEmpty) ...[
+                   _DetailRow(
+                     label: 'Thời gian giao thực tế',
+                     value: Builder(builder: (context) {
+                       try {
+                         return Text(
+                           DateFormat('dd/MM/yyyy HH:mm').format(DateTime.parse(order.actualDeliveryTime!)),
+                           style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.success),
+                         );
+                       } catch (_) {
+                         return Text(order.actualDeliveryTime!);
+                       }
+                     }),
+                   ),
+                 ],
+                 _DetailRow(label: 'Địa chỉ giao hàng', value: Text(order.deliveryAddress)),
+                 _DetailRow(label: 'Tỉnh/Thành phố', value: Text(order.deliveryProvince)),
+                 _DetailRow(label: 'Kinh độ/Vĩ độ', value: Text('${order.longitude} / ${order.latitude}')),
                 _DetailRow(
                   label: 'Tuyến đường',
                   value: Text(order.routeConfig?.routeName ?? 'Chưa cấu hình'),

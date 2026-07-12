@@ -4,6 +4,8 @@ import 'package:smartlogisticssystem/data/model/linehaul_trip_model.dart';
 import 'package:smartlogisticssystem/data/model/local_trip_model.dart';
 import 'package:smartlogisticssystem/data/model/order_model.dart';
 import 'package:smartlogisticssystem/data/model/pallet_model.dart';
+import 'package:smartlogisticssystem/data/model/driver_model.dart';
+
 
 class DispatchManagementService {
   final ApiClient _apiClient = ApiClient();
@@ -15,6 +17,7 @@ class DispatchManagementService {
         final List<dynamic> data = response.data['data'];
         return data.map((e) => LinehaulTripModel.fromJson(e)).toList();
       }
+      
       return [];
     } catch (e) {
       print('Error getting all linehaul trips: $e');
@@ -76,6 +79,15 @@ class DispatchManagementService {
       await _apiClient.put('admin/local-trips/$tripId/change-vehicle/$vehicleId');
     } catch (e) {
       print('Error changing local trip vehicle: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> collapseLocalTrip(int cancelledTripId, int targetTripId) async {
+    try {
+      await _apiClient.put('admin/local-trips/$cancelledTripId/collapse/$targetTripId');
+    } catch (e) {
+      print('Error collapsing local trip: $e');
       rethrow;
     }
   }
@@ -164,4 +176,74 @@ class DispatchManagementService {
       rethrow;
     }
   }
+
+  Future<List<DriverModel>> getAllDrivers() async {
+    try {
+      final response = await _apiClient.get('drivers');
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data['data'];
+        return data.map((e) => DriverModel.fromJson(e)).toList();
+      }
+      return [];
+    } catch (e) {
+      print('Error getting all drivers: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> removeOrderFromPallet(int palletId, String orderCode) async {
+    try {
+      await _apiClient.delete('pallet/$palletId/items/$orderCode');
+    } catch (e) {
+      print('Error removing order from pallet: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> removePalletFromLinehaulTrip(int tripId, int palletId) async {
+    try {
+      await _apiClient.post('linehaul-trip/$tripId/remove-pallet/$palletId');
+    } catch (e) {
+      print('Error removing pallet from linehaul trip: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> deleteLinehaulTrip(int tripId) async {
+    try {
+      await _apiClient.delete('linehaul-trip/$tripId');
+    } catch (e) {
+      print('Error deleting linehaul trip: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> deletePallet(int palletId) async {
+    try {
+      await _apiClient.delete('pallet/$palletId');
+    } catch (e) {
+      print('Error deleting pallet: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> updateStatusToCanStart(int tripId) async {
+    try {
+      await _apiClient.post('linehaul-trip/$tripId/can-start');
+    } catch (e) {
+      print('Error updating linehaul trip to can start: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> updateStatusToCanSeal(int palletId) async {
+    try {
+      await _apiClient.post('pallet/$palletId/can-seal');
+    } catch (e) {
+      print('Error updating pallet to can seal: $e');
+      rethrow;
+    }
+  }
 }
+
+

@@ -373,6 +373,7 @@ class _ZoneManagementPageState extends State<ZoneManagementPage> {
                       DataColumn(label: Text('ID')),
                       DataColumn(label: Text('Tên khu vực')),
                       DataColumn(label: Text('Số điểm mốc')),
+                      DataColumn(label: Text('SLA (giờ)')),
                       DataColumn(label: Text('Ngày tạo')),
                       DataColumn(label: Text('Thao tác')),
                     ],
@@ -383,6 +384,7 @@ class _ZoneManagementPageState extends State<ZoneManagementPage> {
                               DataCell(Text(zone.id.toString())),
                               DataCell(Text(zone.name)),
                               DataCell(Text('${_getVerticesCount(zone)} điểm')),
+                              DataCell(Text(zone.slaHours != null ? '${zone.slaHours}h' : 'Không có')),
                               DataCell(
                                 Text(
                                   zone.createAt != null

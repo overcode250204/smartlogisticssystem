@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smartlogisticssystem/core/auth_session.dart';
@@ -28,6 +28,7 @@ import 'package:smartlogisticssystem/feature/route_config/screens/route_config_m
 import 'package:smartlogisticssystem/feature/order/screens/order_management_page.dart';
 import 'package:smartlogisticssystem/feature/dispatch_trip/screens/dispatch_management_page.dart';
 import 'package:smartlogisticssystem/widgets/app_shell.dart';
+import 'package:smartlogisticssystem/feature/exception_reason/screens/exception_reasons_page.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
@@ -192,6 +193,11 @@ final appRouter = GoRouter(
           pageBuilder: (context, state) =>
               const NoTransitionPage(child: DashboardPage()),
         ),
+        // GoRoute(
+        //   path: '/trip-dashboard',
+        //   pageBuilder: (context, state) =>
+        //       const NoTransitionPage(child: TripDashboardPage()),
+        // ),
         GoRoute(
           path: '/inventory',
           pageBuilder: (context, state) =>
@@ -283,6 +289,19 @@ final appRouter = GoRouter(
           pageBuilder: (context, state) =>
               const NoTransitionPage(child: CategoriesPage()),
         ),
+        GoRoute(
+          path: '/exception-reasons',
+          redirect: (context, state) async {
+            final prefs = await SharedPreferences.getInstance();
+            final roleId = prefs.getInt('roleId');
+            if (roleId != 1) {
+              return '/dashboard'; // Redirect non-admins to dashboard
+            }
+            return null; // Allow access
+          },
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: ExceptionReasonsPage()),
+        ),
       ],
     ),
   ],
@@ -301,6 +320,7 @@ String _titleForPath(String path) {
 
   return switch (path) {
     '/dashboard' => 'Tổng quan',
+    '/trip-dashboard' => 'Trip Dashboard',
     '/inventory' => 'Quản lý kho',
     '/barcode-gen' => 'Tạo mã vạch',
     '/barcode-scan' => 'Quét mã vạch',
@@ -308,6 +328,7 @@ String _titleForPath(String path) {
     '/reports' => 'Báo cáo',
     '/suppliers' => 'Nhà cung cấp',
     '/categories' => 'Danh mục',
+    '/exception-reasons' => 'Lý do ngoại lệ',
     '/users' => 'Quản lý nhân sự',
     '/zones' => 'Quản lý khu vực',
     '/vehicles' => 'Quản lý phương tiện',

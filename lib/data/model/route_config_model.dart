@@ -28,6 +28,7 @@ class RouteConfigModel {
   final int? maxWaitingDays;
   final List<String> provinceNames;
   final bool isActive;
+  final int? slaHours;
 
   const RouteConfigModel({
     required this.routeId,
@@ -42,6 +43,7 @@ class RouteConfigModel {
     this.maxWaitingDays,
     required this.provinceNames,
     required this.isActive,
+    this.slaHours,
   });
 
   factory RouteConfigModel.fromJson(Map<String, dynamic> json) {
@@ -63,6 +65,7 @@ class RouteConfigModel {
       maxWaitingDays: json['maxWaitingDays'] as int?,
       provinceNames: List<String>.from(json['provinceNames'] ?? []),
       isActive: json['isActive'] as bool? ?? true,
+      slaHours: json['slaHours'] as int?,
     );
   }
 }

@@ -2,6 +2,20 @@ import 'package:smartlogisticssystem/data/model/route_config_model.dart';
 import 'package:smartlogisticssystem/data/model/linehaul_trip_model.dart';
 import 'package:smartlogisticssystem/data/model/pallet_item_model.dart';
 
+enum PalletStatus {
+  CREATING, CAN_SEAL, SEALED, IN_TRANSIT, ARRIVED;
+
+  String get displayName {
+    return switch (this) {
+      PalletStatus.CREATING => 'Tạo pallet',
+      PalletStatus.CAN_SEAL => 'Đợi dán seal',
+      PalletStatus.SEALED => 'Đã dán seal',
+      PalletStatus.IN_TRANSIT => 'Trên đường đi',
+      PalletStatus.ARRIVED => 'Đã tới nơi',
+    };
+  }
+}
+
 class PalletModel {
   final int? palletId;
   final String? palletCode;

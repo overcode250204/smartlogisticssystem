@@ -1,17 +1,25 @@
 import 'package:smartlogisticssystem/data/model/driver_model.dart';
 
+enum role{
+  MAIN,ASSISTANT;
+  String get displayName {
+    return switch (this) {
+      role.MAIN => 'Tài xế chính',
+      role.ASSISTANT => 'Tài xế phụ',
+    };
+  }
+}
+
 class LinehaulTripDriverModel {
   final int? id;
   final DriverModel? driver;
   final String? role;
-  final String? assignmentStatus;
   final String? assignedAt;
 
   LinehaulTripDriverModel({
     this.id,
     this.driver,
     this.role,
-    this.assignmentStatus,
     this.assignedAt,
   });
 
@@ -20,7 +28,6 @@ class LinehaulTripDriverModel {
       id: _toInt(json['id']),
       driver: json['driver'] != null ? DriverModel.fromJson(json['driver']) : null,
       role: json['role'],
-      assignmentStatus: json['assignmentStatus'],
       assignedAt: json['assignedAt'],
     );
   }

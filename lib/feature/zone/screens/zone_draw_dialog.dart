@@ -17,6 +17,7 @@ class ZoneDrawDialog extends StatefulWidget {
 class _ZoneDrawDialogState extends State<ZoneDrawDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  final _slaController = TextEditingController();
   final List<LatLng> _points = [];
   final MapController _mapController = MapController();
   final GlobalKey _mapKey = GlobalKey();
@@ -29,6 +30,7 @@ class _ZoneDrawDialogState extends State<ZoneDrawDialog> {
     super.initState();
     if (widget.zone != null) {
       _nameController.text = widget.zone!.name;
+      _slaController.text = widget.zone!.slaHours?.toString() ?? '';
       // Parse coordinates from geojson
       final coverage = widget.zone!.coverageArea;
       if (coverage['type'] == 'Polygon' && coverage['coordinates'] is List) {
@@ -65,6 +67,7 @@ class _ZoneDrawDialogState extends State<ZoneDrawDialog> {
   @override
   void dispose() {
     _nameController.dispose();
+    _slaController.dispose();
     _mapController.dispose();
     super.dispose();
   }
@@ -118,11 +121,14 @@ class _ZoneDrawDialogState extends State<ZoneDrawDialog> {
       return;
     }
 
+    final int? slaHours = int.tryParse(_slaController.text.trim());
+ 
     final request = ZoneCreateRequest(
       name: _nameController.text.trim(),
       coverageArea: _buildGeoJson(),
+      slaHours: slaHours,
     );
-
+ 
     Navigator.pop(context, request);
   }
 
@@ -158,16 +164,45 @@ class _ZoneDrawDialogState extends State<ZoneDrawDialog> {
             const SizedBox(height: 8),
             Form(
               key: _formKey,
-              child: TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Tên khu vực *',
-                  hintText: 'Nhập tên khu vực',
-                  prefixIcon: Icon(Icons.map_outlined),
-                ),
-                validator: (value) => value == null || value.trim().isEmpty
-                    ? 'Bắt buộc nhập tên khu vực'
-                    : null,
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: TextFormField(
+                      controller: _nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Tên khu vực *',
+                        hintText: 'Nhập tên khu vực',
+                        prefixIcon: Icon(Icons.map_outlined),
+                      ),
+                      validator: (value) => value == null || value.trim().isEmpty
+                          ? 'Bắt buộc nhập tên khu vực'
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    flex: 1,
+                    child: TextFormField(
+                      controller: _slaController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'SLA (giờ)',
+                        hintText: 'VD: 4',
+                        prefixIcon: Icon(Icons.access_time_outlined),
+                      ),
+                      validator: (value) {
+                        if (value != null && value.trim().isNotEmpty) {
+                          final val = int.tryParse(value.trim());
+                          if (val == null || val <= 0) {
+                            return 'Phải là số nguyên dương';
+                          }
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 12),

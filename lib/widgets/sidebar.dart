@@ -38,6 +38,12 @@ class Sidebar extends StatelessWidget {
       allowedRoleIds: {AuthSession.managerRoleId},
     ),
     SidebarItem(
+      label: 'Thống kê vận chuyển',
+      route: '/trip-dashboard',
+      icon: Icons.dashboard_customize_outlined,
+      allowedRoleIds: {AuthSession.adminRoleId, AuthSession.managerRoleId},
+    ),
+    SidebarItem(
       label: 'Quản lý kho',
       route: '/inventory',
       icon: Icons.inventory_2_outlined,
@@ -108,6 +114,12 @@ class Sidebar extends StatelessWidget {
       label: 'Điều phối vận tải',
       route: '/dispatch',
       icon: Icons.local_shipping_outlined,
+      allowedRoleIds: {AuthSession.adminRoleId},
+    ),
+    SidebarItem(
+      label: 'Lý do ngoại lệ',
+      route: '/exception-reasons',
+      icon: Icons.warning_amber_outlined,
       allowedRoleIds: {AuthSession.adminRoleId},
     ),
   ];

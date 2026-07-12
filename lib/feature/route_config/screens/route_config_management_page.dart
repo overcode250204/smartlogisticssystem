@@ -331,6 +331,7 @@ class _RouteConfigManagementPageState extends State<RouteConfigManagementPage> {
                       DataColumn2(label: Text('ID'), size: ColumnSize.S),
                       DataColumn2(label: Text('Tên tuyến'), size: ColumnSize.M),
                       DataColumn2(label: Text('Tuyến đi (Từ -> Đến)'), size: ColumnSize.L),
+                      DataColumn2(label: Text('SLA'), size: ColumnSize.S),
                       DataColumn2(label: Text('Loại điều phối'), size: ColumnSize.M),
                       DataColumn2(label: Text('Trạng thái'), size: ColumnSize.S),
                       DataColumn2(label: Text('Xe mặc định'), size: ColumnSize.M),
@@ -345,6 +346,7 @@ class _RouteConfigManagementPageState extends State<RouteConfigManagementPage> {
                               DataCell(Text(rc.routeId.toString())),
                               DataCell(Text(rc.routeName)),
                               DataCell(Text('${rc.fromWarehouse.name} ➔ ${rc.toWarehouse.name}')),
+                              DataCell(Text(rc.slaHours != null ? '${rc.slaHours}h' : 'Tính toán...')),
                               DataCell(
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

@@ -265,6 +265,7 @@ class _WarehouseManagementPageState extends State<WarehouseManagementPage> {
                       DataColumn(label: Text('Phân loại')),
                       DataColumn(label: Text('Địa chỉ')),
                       DataColumn(label: Text('Tỉnh / Thành phố')),
+                      DataColumn(label: Text('Giờ bắt đầu giao')),
                       DataColumn(label: Text('Tọa độ (Lat, Lng)')),
                       DataColumn(label: Text('Thao tác')),
                     ],
@@ -307,6 +308,7 @@ class _WarehouseManagementPageState extends State<WarehouseManagementPage> {
                               ),
                               DataCell(Text(warehouse.address)),
                               DataCell(Text(warehouse.province)),
+                              DataCell(Text(warehouse.startDeliveryTime ?? '--:--')),
                               DataCell(Text('${warehouse.latitude.toStringAsFixed(6)}, ${warehouse.longitude.toStringAsFixed(6)}')),
                               DataCell(
                                 Row(
@@ -437,6 +439,7 @@ class _WarehouseFormDialogState extends State<_WarehouseFormDialog> {
   late final TextEditingController _addressController;
   late final TextEditingController _latitudeController;
   late final TextEditingController _longitudeController;
+  late final TextEditingController _startDeliveryTimeController;
   late WarehouseType _type;
   String? _selectedProvince;
   bool _isSaving = false;
@@ -451,6 +454,7 @@ class _WarehouseFormDialogState extends State<_WarehouseFormDialog> {
     _addressController = TextEditingController(text: widget.warehouse?.address ?? '');
     _latitudeController = TextEditingController(text: widget.warehouse?.latitude.toString() ?? '10.762622');
     _longitudeController = TextEditingController(text: widget.warehouse?.longitude.toString() ?? '106.660172');
+    _startDeliveryTimeController = TextEditingController(text: widget.warehouse?.startDeliveryTime ?? '');
     _type = widget.warehouse?.type ?? WarehouseType.CDC;
     _selectedProvince = widget.warehouse?.province;
 
@@ -465,6 +469,7 @@ class _WarehouseFormDialogState extends State<_WarehouseFormDialog> {
     _addressController.dispose();
     _latitudeController.dispose();
     _longitudeController.dispose();
+    _startDeliveryTimeController.dispose();
     _mapController.dispose();
     super.dispose();
   }
@@ -497,6 +502,7 @@ class _WarehouseFormDialogState extends State<_WarehouseFormDialog> {
     final address = _addressController.text.trim();
     final lat = double.parse(_latitudeController.text.trim());
     final lng = double.parse(_longitudeController.text.trim());
+    final startDeliveryTime = _startDeliveryTimeController.text.trim().isEmpty ? null : _startDeliveryTimeController.text.trim();
 
     try {
       if (widget.warehouse == null) {
@@ -507,6 +513,7 @@ class _WarehouseFormDialogState extends State<_WarehouseFormDialog> {
           province: _selectedProvince!,
           latitude: lat,
           longitude: lng,
+          startDeliveryTime: startDeliveryTime,
         );
         await widget.warehouseService.createWarehouse(request);
       } else {
@@ -517,6 +524,7 @@ class _WarehouseFormDialogState extends State<_WarehouseFormDialog> {
           province: _selectedProvince!,
           latitude: lat,
           longitude: lng,
+          startDeliveryTime: startDeliveryTime,
         );
         await widget.warehouseService.updateWarehouse(widget.warehouse!.warehouseId, request);
       }
@@ -633,6 +641,34 @@ class _WarehouseFormDialogState extends State<_WarehouseFormDialog> {
                           setState(() {
                             _selectedProvince = val;
                           });
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _startDeliveryTimeController,
+                        readOnly: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Giờ bắt đầu giao',
+                          prefixIcon: Icon(Icons.access_time_outlined),
+                        ),
+                        onTap: () async {
+                          TimeOfDay initial = const TimeOfDay(hour: 8, minute: 0);
+                          try {
+                            if (_startDeliveryTimeController.text.isNotEmpty) {
+                              final parts = _startDeliveryTimeController.text.split(':');
+                              initial = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+                            }
+                          } catch (_) {}
+                          final TimeOfDay? picked = await showTimePicker(
+                            context: context,
+                            initialTime: initial,
+                          );
+                          if (picked != null) {
+                            final String formattedTime = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}:00';
+                            setState(() {
+                              _startDeliveryTimeController.text = formattedTime;
+                            });
+                          }
                         },
                       ),
                       const SizedBox(height: 16),

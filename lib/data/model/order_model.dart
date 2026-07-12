@@ -21,6 +21,8 @@ class OrderModel {
   final String createdAt;
   final List<OrderItemModel> items;
   final String? proofUrl;
+  final String? expectedDeliveryTime;
+  final String? actualDeliveryTime;
 
   const OrderModel({
     required this.orderId,
@@ -42,6 +44,8 @@ class OrderModel {
     required this.createdAt,
     required this.items,
     this.proofUrl,
+    this.expectedDeliveryTime,
+    this.actualDeliveryTime,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -72,6 +76,8 @@ class OrderModel {
               .toList() ??
           const [],
       proofUrl: json['proofUrl'] as String?,
+      expectedDeliveryTime: json['expectedDeliveryTime'] as String?,
+      actualDeliveryTime: json['actualDeliveryTime'] as String?,
     );
   }
 }

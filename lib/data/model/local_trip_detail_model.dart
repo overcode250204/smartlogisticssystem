@@ -1,12 +1,29 @@
 import 'package:smartlogisticssystem/data/model/order_model.dart';
 
+enum LocalTripDetailStatus {
+PENDING, 
+ARRIVED, 
+COMPLETED, 
+FAILED;
+
+  String get displayName {
+    return switch (this) {
+      LocalTripDetailStatus.PENDING => 'Đang xử lí',
+      LocalTripDetailStatus.ARRIVED => 'Đã đến nơi',
+      LocalTripDetailStatus.COMPLETED => 'Đã giao hàng',
+      LocalTripDetailStatus.FAILED => 'Thất bại',
+    };
+  }
+}
+
 class LocalTripDetailModel {
   final int? id;
   final OrderModel? order;
   final int? stopOrder;
   final String? proofUrl;
   final bool? barcodeScanned;
-  final String? status;
+  final LocalTripDetailStatus? status;
+  final String? localTripDetailCode;
 
   LocalTripDetailModel({
     this.id,
@@ -15,6 +32,7 @@ class LocalTripDetailModel {
     this.proofUrl,
     this.barcodeScanned,
     this.status,
+    this.localTripDetailCode,
   });
 
   factory LocalTripDetailModel.fromJson(Map<String, dynamic> json) {
@@ -24,7 +42,8 @@ class LocalTripDetailModel {
       stopOrder: _toInt(json['stopOrder']),
       proofUrl: json['proofUrl'],
       barcodeScanned: json['barcodeScanned'],
-      status: json['status'],
+      status: json['status'] != null ? LocalTripDetailStatus.values.firstWhere((e) => e.name == json['status']) : null,
+      localTripDetailCode: json['localTripDetailCode'],
     );
   }
 

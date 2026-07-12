@@ -1,10 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:smartlogisticssystem/core/app_theme.dart';
 import 'package:smartlogisticssystem/data/model/linehaul_trip_model.dart';
 import 'package:smartlogisticssystem/data/model/local_trip_model.dart';
 import 'package:smartlogisticssystem/data/model/order_model.dart';
 import 'package:smartlogisticssystem/data/model/pallet_model.dart';
 import 'package:smartlogisticssystem/feature/dispatch_trip/services/dispatch_management_service.dart';
+import 'package:smartlogisticssystem/data/model/vehicle_model.dart';
+import 'package:smartlogisticssystem/data/model/driver_model.dart';
+import 'package:smartlogisticssystem/data/model/linehaul_trip_driver_model.dart';
+import 'package:smartlogisticssystem/feature/vehicle/service/vehicle_service.dart';
+import 'package:smartlogisticssystem/data/model/route_config_model.dart';
+import 'package:smartlogisticssystem/feature/route_config/service/route_config_service.dart';
+import 'package:smartlogisticssystem/feature/dispatch_trip/screens/widgets/create_linehaul_trip_dialog.dart';
+import 'package:smartlogisticssystem/feature/dispatch_trip/screens/widgets/create_pallet_dialog.dart';
+import 'package:smartlogisticssystem/feature/dispatch_trip/screens/widgets/edit_linehaul_trip_dialog.dart';
+import 'package:smartlogisticssystem/feature/dispatch_trip/screens/widgets/edit_local_trip_dialog.dart';
+import 'package:smartlogisticssystem/feature/dispatch_trip/screens/widgets/collapse_local_trip_dialog.dart';
+import 'package:smartlogisticssystem/feature/dispatch_trip/screens/widgets/trip_list_column.dart';
+import 'package:smartlogisticssystem/feature/dispatch_trip/screens/widgets/trip_details_column.dart';
+import 'package:smartlogisticssystem/feature/dispatch_trip/screens/widgets/resources_column.dart';
+
+
 
 class DispatchManagementPage extends StatefulWidget {
   const DispatchManagementPage({super.key});
@@ -26,6 +43,10 @@ class _DispatchManagementPageState extends State<DispatchManagementPage> {
   List<PalletModel> _unassignedPallets = [];
   bool _isLoadingResources = true;
 
+  List<VehicleModel> _allVehicles = [];
+  List<DriverModel> _allDrivers = [];
+  List<RouteConfigModel> _allRouteConfigs = [];
+
   @override
   void initState() {
     super.initState();
@@ -43,14 +64,19 @@ class _DispatchManagementPageState extends State<DispatchManagementPage> {
       final localRes = await _dispatchService.getAllLocalTrips();
       final ordersRes = await _dispatchService.getOrdersByStatus('NEW');
       final palletsRes = await _dispatchService.getAllPallets();
+      final vehiclesRes = await VehicleService().getAllVehicles();
+      final driversRes = await _dispatchService.getAllDrivers();
+      final routeConfigsRes = await RouteConfigService().getAllRouteConfigs();
 
       if (mounted) {
         setState(() {
           _linehaulTrips = linehaulRes;
           _localTrips = localRes;
           _newOrders = ordersRes;
-          // Filter unassigned pallets (assuming linehaulTrip is null means unassigned)
           _unassignedPallets = palletsRes.where((p) => p.linehaulTrip == null).toList();
+          _allVehicles = vehiclesRes;
+          _allDrivers = driversRes;
+          _allRouteConfigs = routeConfigsRes;
           _isLoadingTrips = false;
           _isLoadingResources = false;
         });
@@ -81,26 +107,238 @@ class _DispatchManagementPageState extends State<DispatchManagementPage> {
     _loadData();
   }
 
+  Color _getLinehaulStatusColor(LinehaulTripStatus? status) {
+    switch (status) {
+      case LinehaulTripStatus.PREPARING:
+        return Colors.orange;
+      case LinehaulTripStatus.EN_ROUTE:
+        return Colors.blue;
+      case LinehaulTripStatus.ARRIVED:
+        return Colors.green;
+      case LinehaulTripStatus.CANCELLED:
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Color _getLocalStatusColor(LocalTripStatus? status) {
+    switch (status) {
+      case LocalTripStatus.PENDING_ACCEPTANCE:
+        return Colors.orange;
+      case LocalTripStatus.ACCEPTED:
+        return Colors.blue;
+      case LocalTripStatus.CANCELLED:
+        return Colors.red;
+      case LocalTripStatus.ASSIGNED:
+        return Colors.indigo;
+      case LocalTripStatus.EXECUTING:
+        return Colors.amber;
+      case LocalTripStatus.COMPLETED:
+        return Colors.green;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Color _getPalletStatusColor(String? statusStr) {
+    if (statusStr == null) return Colors.grey;
+    try {
+      final status = PalletStatus.values.firstWhere((e) => e.name == statusStr);
+      switch (status) {
+        case PalletStatus.CREATING:
+          return Colors.orange;
+        case PalletStatus.SEALED:
+          return Colors.blue;
+        case PalletStatus.IN_TRANSIT:
+          return Colors.indigo;
+        case PalletStatus.ARRIVED:
+          return Colors.green;
+        case PalletStatus.CAN_SEAL:
+          return Colors.brown;
+      }
+    } catch (_) {
+      return Colors.grey;
+    }
+  }
+
+  String _getPalletStatusDisplayName(String? statusStr) {
+    if (statusStr == null) return 'N/A';
+    try {
+      final status = PalletStatus.values.firstWhere((e) => e.name == statusStr);
+      return status.displayName;
+    } catch (_) {
+      return statusStr;
+    }
+  }
+
   void _showEditLinehaulDialog(LinehaulTripModel trip) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Edit Linehaul Trip #${trip.linehaulId}'),
-        content: const Text('Edit driver, vehicle, and other info here.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              // TODO: Implement updateLinehaulTrip logic
-              Navigator.pop(context);
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+      builder: (context) {
+        return EditLinehaulTripDialog(
+          trip: trip,
+          allVehicles: _allVehicles,
+          allDrivers: _allDrivers,
+          onUpdate: (updateData) async {
+            try {
+              await _dispatchService.updateLinehaulTrip(trip.linehaulId!, updateData);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Cập nhật chuyến đi thành công!'), backgroundColor: Colors.green),
+              );
+              _refreshTripDetails();
+            } catch (e) {
+              String errorMsg = 'Lỗi cập nhật chuyến đi';
+              if (e is DioException && e.response?.data != null) {
+                errorMsg = e.response!.data['message'] ?? errorMsg;
+              } else {
+                errorMsg = e.toString();
+              }
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+              );
+              rethrow;
+            }
+          },
+        );
+      },
+    );
+  }
+
+  void _showEditLocalDialog(LocalTripModel trip) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return EditLocalTripDialog(
+          trip: trip,
+          allVehicles: _allVehicles,
+          allDrivers: _allDrivers,
+          onSave: (vehicleId, driverId) async {
+            try {
+              if (vehicleId != null && vehicleId != trip.vehicle?.vehicleId) {
+                await _dispatchService.changeLocalTripVehicle(trip.localTripId!, vehicleId);
+              }
+              if (driverId != null && driverId != trip.driver?.driverId) {
+                await _dispatchService.changeLocalTripDriver(trip.localTripId!, driverId);
+              }
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Cập nhật chuyến đi Last-Mile thành công!'), backgroundColor: Colors.green),
+              );
+              _refreshTripDetails();
+            } catch (e) {
+              String errorMsg = 'Lỗi cập nhật chuyến đi Last-Mile';
+              if (e is DioException && e.response?.data != null) {
+                errorMsg = e.response!.data['message'] ?? errorMsg;
+              } else {
+                errorMsg = e.toString();
+              }
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+              );
+              rethrow;
+            }
+          },
+        );
+      },
+    );
+  }
+
+  void _showCollapseLocalDialog(LocalTripModel trip) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return CollapseLocalTripDialog(
+          trip: trip,
+          localTrips: _localTrips,
+          onCollapse: (targetTripId) async {
+            try {
+              await _dispatchService.collapseLocalTrip(trip.localTripId!, targetTripId);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Gộp chuyến Last-Mile thành công!'), backgroundColor: Colors.green),
+              );
+              setState(() {
+                _selectedTrip = null;
+              });
+              _loadData();
+            } catch (e) {
+              String errorMsg = 'Lỗi gộp chuyến Last-Mile';
+              if (e is DioException && e.response?.data != null) {
+                errorMsg = e.response!.data['message'] ?? errorMsg;
+              } else {
+                errorMsg = e.toString();
+              }
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+              );
+              rethrow;
+            }
+          },
+        );
+      },
+    );
+  }
+
+  void _showCreateLinehaulTripDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return CreateLinehaulTripDialog(
+          allRouteConfigs: _allRouteConfigs,
+          allVehicles: _allVehicles,
+          allDrivers: _allDrivers,
+          onCreate: (createData) async {
+            try {
+              await _dispatchService.createLinehaulTrip(createData);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Tạo chuyến đi thành công!'), backgroundColor: Colors.green),
+              );
+              _loadData();
+            } catch (e) {
+              String errorMsg = 'Lỗi tạo chuyến đi';
+              if (e is DioException && e.response?.data != null) {
+                errorMsg = e.response!.data['message'] ?? errorMsg;
+              } else {
+                errorMsg = e.toString();
+              }
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+              );
+              rethrow;
+            }
+          },
+        );
+      },
+    );
+  }
+
+  void _showCreatePalletDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return CreatePalletDialog(
+          allRouteConfigs: _allRouteConfigs,
+          onCreate: (createData) async {
+            try {
+              await _dispatchService.createPallet(createData);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Tạo Pallet thành công!'), backgroundColor: Colors.green),
+              );
+              _loadData();
+            } catch (e) {
+              String errorMsg = 'Lỗi tạo Pallet';
+              if (e is DioException && e.response?.data != null) {
+                errorMsg = e.response!.data['message'] ?? errorMsg;
+              } else {
+                errorMsg = e.toString();
+              }
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+              );
+              rethrow;
+            }
+          },
+        );
+      },
     );
   }
 
@@ -118,591 +356,236 @@ class _DispatchManagementPageState extends State<DispatchManagementPage> {
               color: Colors.white,
               border: Border(right: BorderSide(color: AppColors.border)),
             ),
-            child: _buildTripListColumn(),
+            child: TripListColumn(
+              isLinehaulSelected: _isLinehaulSelected,
+              linehaulTrips: _linehaulTrips,
+              localTrips: _localTrips,
+              selectedTrip: _selectedTrip,
+              isLoadingTrips: _isLoadingTrips,
+              onSelectTrip: (trip) => setState(() => _selectedTrip = trip),
+              onToggleLinehaul: (isLinehaul) => setState(() {
+                _isLinehaulSelected = isLinehaul;
+                _selectedTrip = null;
+              }),
+              onCreateTrip: () async {
+                if (_isLinehaulSelected) {
+                  _showCreateLinehaulTripDialog();
+                } else {
+                  try {
+                    await _dispatchService.planLocalTrips();
+                    _loadData();
+                  } catch (e) {
+                    String errorMsg = 'Lỗi lập kế hoạch Last-Mile';
+                    if (e is DioException && e.response?.data != null) {
+                      errorMsg = e.response!.data['message'] ?? errorMsg;
+                    }
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+                    );
+                  }
+                }
+              },
+            ),
           ),
           // Column 2: Trip Details
           Expanded(
             flex: 5,
             child: Padding(
               padding: const EdgeInsets.all(16.0),
-              child: _buildTripDetailsColumn(),
+              child: Column(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: TripDetailsColumn(
+                      selectedTrip: _selectedTrip,
+                      onEditLinehaul: _selectedTrip is LinehaulTripModel
+                          ? () => _showEditLinehaulDialog(_selectedTrip as LinehaulTripModel)
+                          : null,
+                      onEditLocal: _selectedTrip is LocalTripModel
+                          ? () => _showEditLocalDialog(_selectedTrip as LocalTripModel)
+                          : null,
+                      onCollapseLocal: (_selectedTrip is LocalTripModel && (_selectedTrip as LocalTripModel).status == LocalTripStatus.CANCELLED)
+                          ? () => _showCollapseLocalDialog(_selectedTrip as LocalTripModel)
+                          : null,
+                      onAddPalletToLinehaul: (linehaulId, palletId) async {
+                        try {
+                          await _dispatchService.addPalletToLinehaulTrip(linehaulId, palletId);
+                          _refreshTripDetails();
+                        } catch (e) {
+                          String errorMsg = 'Lỗi thêm Pallet vào chuyến đi';
+                          if (e is DioException && e.response?.data != null) {
+                            errorMsg = e.response!.data['message'] ?? errorMsg;
+                          }
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+                          );
+                        }
+                      },
+                      onAddOrderToPallet: (palletId, orderCode) async {
+                        try {
+                          await _dispatchService.addOrderToPallet(palletId, orderCode);
+                          _refreshTripDetails();
+                        } catch (e) {
+                          String errorMsg = 'Lỗi thêm đơn hàng vào Pallet';
+                          if (e is DioException && e.response?.data != null) {
+                            errorMsg = e.response!.data['message'] ?? errorMsg;
+                          }
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+                          );
+                        }
+                      },
+                      onDeleteLinehaul: (tripId) async {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Xác nhận xóa'),
+                            content: const Text('Bạn có chắc chắn muốn xóa chuyến xe này không?'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('Hủy'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text('Xóa', style: TextStyle(color: Colors.red)),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirm == true) {
+                          try {
+                            await _dispatchService.deleteLinehaulTrip(tripId);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Xóa chuyến xe thành công!'), backgroundColor: Colors.green),
+                            );
+                            setState(() {
+                              _selectedTrip = null;
+                            });
+                            _loadData();
+                          } catch (e) {
+                            String errorMsg = 'Lỗi xóa chuyến xe';
+                            if (e is DioException && e.response?.data != null) {
+                              errorMsg = e.response!.data['message'] ?? errorMsg;
+                            }
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+                            );
+                          }
+                        }
+                      },
+                      onUpdateStatusToCanStart: (tripId) async {
+                        try {
+                          await _dispatchService.updateStatusToCanStart(tripId);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Cập nhật trạng thái chuyến xe thành công!'), backgroundColor: Colors.green),
+                          );
+                          _refreshTripDetails();
+                        } catch (e) {
+                          String errorMsg = 'Lỗi cập nhật trạng thái chuyến xe';
+                          if (e is DioException && e.response?.data != null) {
+                            errorMsg = e.response!.data['message'] ?? errorMsg;
+                          }
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+                          );
+                        }
+                      },
+                      onDeletePallet: (palletId) async {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Xác nhận xóa'),
+                            content: const Text('Bạn có chắc chắn muốn xóa Pallet này không?'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('Hủy'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text('Xóa', style: TextStyle(color: Colors.red)),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirm == true) {
+                          try {
+                            await _dispatchService.deletePallet(palletId);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Xóa Pallet thành công!'), backgroundColor: Colors.green),
+                            );
+                            _loadData();
+                            if (_selectedTrip != null) {
+                              _refreshTripDetails();
+                            }
+                          } catch (e) {
+                            String errorMsg = 'Lỗi xóa Pallet';
+                            if (e is DioException && e.response?.data != null) {
+                              errorMsg = e.response!.data['message'] ?? errorMsg;
+                            }
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+                            );
+                          }
+                        }
+                      },
+                      onUpdateStatusToCanSeal: (palletId) async {
+                        try {
+                          await _dispatchService.updateStatusToCanSeal(palletId);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Cập nhật trạng thái Pallet thành công!'), backgroundColor: Colors.green),
+                          );
+                          _loadData();
+                          if (_selectedTrip != null) {
+                            _refreshTripDetails();
+                          }
+                        } catch (e) {
+                          String errorMsg = 'Lỗi cập nhật trạng thái Pallet';
+                          if (e is DioException && e.response?.data != null) {
+                            errorMsg = e.response!.data['message'] ?? errorMsg;
+                          }
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+                          );
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    flex: 2,
+                    child: _buildWaitingPalletsSection(),
+                  ),
+                ],
+              ),
             ),
           ),
-          // Column 3: Resources (Orders & Pallets)
+          // Column 3: Resources (Orders Pool)
           Container(
             width: 380,
             decoration: const BoxDecoration(
               color: AppColors.darkest,
               border: Border(left: BorderSide(color: AppColors.border)),
             ),
-            child: _buildResourcesColumn(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTripListColumn() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Danh sách Chuyến đi',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-              ),
-              IconButton(
-                onPressed: () {
-                  if (_isLinehaulSelected) {
-                    _dispatchService.createLinehaulTrip({}).then((_) => _loadData());
-                  } else {
-                    _dispatchService.planLocalTrips().then((_) => _loadData());
-                  }
-                },
-                icon: const Icon(Icons.add_circle, color: AppColors.primary),
-                tooltip: 'Tạo Chuyến đi',
-              ),
-            ],
-          ),
-        ),
-        // Toggle Linehaul / Last-Mile
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Container(
-            decoration: BoxDecoration(
-              color: AppColors.darkest,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() {
-                      _isLinehaulSelected = true;
-                      _selectedTrip = null;
-                    }),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      decoration: BoxDecoration(
-                        color: _isLinehaulSelected ? Colors.white : Colors.transparent,
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: _isLinehaulSelected
-                            ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)]
-                            : null,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.local_shipping_outlined,
-                              size: 16, color: _isLinehaulSelected ? AppColors.primary : AppColors.textSecondary),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Linehaul',
-                            style: TextStyle(
-                              color: _isLinehaulSelected ? AppColors.primary : AppColors.textSecondary,
-                              fontWeight: _isLinehaulSelected ? FontWeight.bold : FontWeight.normal,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() {
-                      _isLinehaulSelected = false;
-                      _selectedTrip = null;
-                    }),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      decoration: BoxDecoration(
-                        color: !_isLinehaulSelected ? Colors.white : Colors.transparent,
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: !_isLinehaulSelected
-                            ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)]
-                            : null,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.electric_moped_outlined,
-                              size: 16, color: !_isLinehaulSelected ? AppColors.primary : AppColors.textSecondary),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Last-Mile',
-                            style: TextStyle(
-                              color: !_isLinehaulSelected ? AppColors.primary : AppColors.textSecondary,
-                              fontWeight: !_isLinehaulSelected ? FontWeight.bold : FontWeight.normal,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        // Filters
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Row(
-            children: [
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: AppColors.border),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      isExpanded: true,
-                      value: 'Tất cả Trạng thái',
-                      items: ['Tất cả Trạng thái', 'Đang chuẩn bị', 'Sẵn sàng'].map((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value, style: const TextStyle(fontSize: 12)),
-                        );
-                      }).toList(),
-                      onChanged: (_) {},
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: AppColors.border),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      isExpanded: true,
-                      value: 'Tất cả Ca',
-                      items: ['Tất cả Ca', 'Ca 1', 'Ca 2'].map((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value, style: const TextStyle(fontSize: 12)),
-                        );
-                      }).toList(),
-                      onChanged: (_) {},
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        // Search
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: TextField(
-            decoration: InputDecoration(
-              hintText: 'Tìm mã chuyến, tuyến đường...',
-              hintStyle: const TextStyle(fontSize: 12),
-              prefixIcon: const Icon(Icons.search, size: 18),
-              contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Expanded(
-          child: _isLoadingTrips
-              ? const Center(child: CircularProgressIndicator())
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  itemCount: _isLinehaulSelected ? _linehaulTrips.length : _localTrips.length,
-                  itemBuilder: (context, index) {
-                    if (_isLinehaulSelected) {
-                      return _buildLinehaulCard(_linehaulTrips[index]);
-                    } else {
-                      return _buildLocalCard(_localTrips[index]);
-                    }
-                  },
-                ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLinehaulCard(LinehaulTripModel trip) {
-    final isSelected = _selectedTrip == trip;
-    // Calculate total weight (mocking based on pallets if needed, or use a field if exists)
-    double currentWeight = 0;
-    for (var p in trip.pallets ?? []) {
-      currentWeight += p.totalWeightKg ?? 0;
-    }
-    double maxWeight = trip.vehicle?.maxWeightKg ?? 500.0;
-    if (maxWeight == 0) maxWeight = 500.0;
-    double progress = (currentWeight / maxWeight).clamp(0.0, 1.0);
-
-    return GestureDetector(
-      onTap: () => setState(() => _selectedTrip = trip),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withOpacity(0.05) : Colors.white,
-          border: Border.all(color: isSelected ? AppColors.primary : AppColors.border, width: isSelected ? 2 : 1),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('TR-${trip.linehaulId ?? "000"}',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: trip.status == 'Đang chuẩn bị' ? Colors.orange.shade50 : AppColors.success.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    trip.status ?? 'Đang chuẩn bị',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: trip.status == 'Đang chuẩn bị' ? Colors.orange.shade800 : AppColors.success,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(Icons.circle, size: 6, color: Colors.grey),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    trip.routeConfig?.routeName ?? 'Unknown Route',
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Ca: 1', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                Text('${currentWeight.toStringAsFixed(0)} / ${maxWeight.toStringAsFixed(0)} kg (${(progress * 100).toStringAsFixed(0)}%)',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
-              ],
-            ),
-            const SizedBox(height: 6),
-            LinearProgressIndicator(
-              value: progress,
-              backgroundColor: AppColors.border,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                progress > 0.9 ? Colors.red : AppColors.warning,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLocalCard(LocalTripModel trip) {
-    final isSelected = _selectedTrip == trip;
-
-    return GestureDetector(
-      onTap: () => setState(() => _selectedTrip = trip),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withOpacity(0.05) : Colors.white,
-          border: Border.all(color: isSelected ? AppColors.primary : AppColors.border, width: isSelected ? 2 : 1),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('LM-${trip.localTripId ?? "000"}',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: trip.status == 'Đang chuẩn bị' ? Colors.orange.shade50 : AppColors.success.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    trip.status ?? 'Đang chuẩn bị',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: trip.status == 'Đang chuẩn bị' ? Colors.orange.shade800 : AppColors.success,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(Icons.circle, size: 6, color: Colors.grey),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    trip.hub?.name ?? 'Unknown Area',
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            const Text('Ca: 1', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-            // Progress bar removed for last mile as per feedback
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTripDetailsColumn() {
-    if (_selectedTrip == null) {
-      return const Center(
-        child: Text('Chọn một chuyến đi để xem chi tiết', style: TextStyle(color: AppColors.textSecondary)),
-      );
-    }
-
-    if (_selectedTrip is LinehaulTripModel) {
-      final trip = _selectedTrip as LinehaulTripModel;
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildTripHeader(
-            'TR-${trip.linehaulId ?? "000"}',
-            'LINEHAUL',
-            trip.routeConfig?.routeName ?? 'Unknown Route',
-            trip.linehaulTripDriver?.isNotEmpty == true ? trip.linehaulTripDriver![0].driver?.name : null,
-            trip.vehicle?.licensePlate,
-            onEdit: () => _showEditLinehaulDialog(trip),
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: DragTarget<PalletModel>(
-              onAccept: (pallet) async {
-                if (pallet.palletId != null && trip.linehaulId != null) {
-                  await _dispatchService.addPalletToLinehaulTrip(trip.linehaulId!, pallet.palletId!);
+            child: ResourcesColumn(
+              isLoadingResources: _isLoadingResources,
+              newOrders: _newOrders,
+              onRemoveOrderFromPallet: (palletId, orderCode) async {
+                try {
+                  await _dispatchService.removeOrderFromPallet(palletId, orderCode);
+                  _loadData();
                   _refreshTripDetails();
+                } catch (e) {
+                  String errorMsg = 'Lỗi xóa đơn hàng khỏi Pallet';
+                  if (e is DioException && e.response?.data != null) {
+                    errorMsg = e.response!.data['message'] ?? errorMsg;
+                  }
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+                  );
                 }
               },
-              builder: (context, candidateData, rejectedData) {
-                return Container(
-                  decoration: BoxDecoration(
-                    color: candidateData.isNotEmpty ? AppColors.primary.withOpacity(0.05) : Colors.transparent,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: candidateData.isNotEmpty ? AppColors.primary : Colors.transparent, width: 2),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.inventory_2_outlined, size: 20),
-                          const SizedBox(width: 8),
-                          Text('Danh sách Pallet trên xe (${trip.pallets?.length ?? 0})',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textPrimary)),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Expanded(
-                        child: ListView.builder(
-                          itemCount: trip.pallets?.length ?? 0,
-                          itemBuilder: (context, index) {
-                            final pallet = trip.pallets![index];
-                            return _buildLinehaulPalletCard(pallet);
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      );
-    } else {
-      final trip = _selectedTrip as LocalTripModel;
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildTripHeader(
-            'LM-${trip.localTripId ?? "000"}',
-            'LAST-MILE',
-            trip.hub?.name ?? 'Unknown Area',
-            trip.driver?.name,
-            trip.vehicle?.licensePlate,
-            onEdit: null, // Read-only for last mile
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.inventory_2_outlined, size: 20),
-                    const SizedBox(width: 8),
-                    Text('Danh sách Đơn hàng (VRP Order)',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textPrimary)),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: trip.details?.length ?? 0,
-                    itemBuilder: (context, index) {
-                      final detail = trip.details![index];
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          border: Border.all(color: AppColors.border),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: AppColors.darkest,
-                            child: Text('${index + 1}', style: const TextStyle(color: AppColors.textPrimary)),
-                          ),
-                          title: Text(detail.order?.orderCode ?? 'Sản phẩm', style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text('${detail.order?.totalWeightKg ?? 0}kg • ${detail.order?.deliveryProvince ?? ""}'),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      );
-    }
-  }
-
-  Widget _buildTripHeader(String title, String typeLabel, String subtitle, String? driver, String? vehicle, {VoidCallback? onEdit}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Text(title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                const SizedBox(width: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.info.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(typeLabel, style: const TextStyle(color: AppColors.info, fontSize: 12, fontWeight: FontWeight.bold)),
-                ),
-              ],
-            ),
-            Row(
-              children: [
-                if (onEdit != null)
-                  IconButton(
-                    icon: const Icon(Icons.edit_outlined, color: AppColors.primary),
-                    onPressed: onEdit,
-                    tooltip: 'Edit Trip',
-                  ),
-                OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: const Text('XUẤT BẾN'),
-                  label: const Icon(Icons.play_arrow),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textPrimary,
-                    side: const BorderSide(color: AppColors.border),
-                    backgroundColor: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Text(subtitle, style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _buildInfoBox(Icons.person_outline, driver ?? 'Chưa phân công', '0901234567'),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildInfoBox(Icons.local_shipping_outlined, 'Biển số xe', vehicle ?? 'Chưa phân công'),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildInfoBox(Icons.lock_outline, 'Chưa đóng Seal', ''),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInfoBox(IconData icon, String title, String subtitle) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: const BoxDecoration(
-              color: AppColors.darkest,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 20, color: AppColors.textSecondary),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                if (subtitle.isNotEmpty)
-                  Text(subtitle, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-              ],
             ),
           ),
         ],
@@ -710,182 +593,81 @@ class _DispatchManagementPageState extends State<DispatchManagementPage> {
     );
   }
 
-  Widget _buildLinehaulPalletCard(PalletModel pallet) {
-    return DragTarget<OrderModel>(
-      onAccept: (order) async {
-        if (pallet.palletId != null && order.orderCode != null) {
-          await _dispatchService.addOrderToPallet(pallet.palletId!, order.orderCode!);
-          _refreshTripDetails();
+  Widget _buildWaitingPalletsSection() {
+    return DragTarget<PalletModel>(
+      onAccept: (pallet) async {
+        int? tripId = pallet.linehaulTrip?.linehaulId;
+        if (tripId == null && _selectedTrip is LinehaulTripModel) {
+          tripId = (_selectedTrip as LinehaulTripModel).linehaulId;
+        }
+        if (pallet.palletId != null && tripId != null) {
+          try {
+            await _dispatchService.removePalletFromLinehaulTrip(tripId, pallet.palletId!);
+            _loadData();
+            _refreshTripDetails();
+          } catch (e) {
+            String errorMsg = 'Lỗi xóa Pallet khỏi chuyến đi';
+            if (e is DioException && e.response?.data != null) {
+              errorMsg = e.response!.data['message'] ?? errorMsg;
+            }
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+            );
+          }
         }
       },
       builder: (context, candidateData, rejectedData) {
         return Container(
-          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.all(8.0),
           decoration: BoxDecoration(
             color: candidateData.isNotEmpty ? AppColors.success.withOpacity(0.1) : Colors.white,
             border: Border.all(color: candidateData.isNotEmpty ? AppColors.success : AppColors.border),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: ExpansionTile(
-            leading: const Icon(Icons.inventory_2, color: AppColors.textSecondary),
-            title: Text(pallet.palletCode ?? 'Unknown Pallet', style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('${pallet.palletItems?.length ?? 0} kiện • ${pallet.totalWeightKg ?? 0}kg'),
-            shape: const Border(),
-            children: pallet.palletItems?.map((item) => ListTile(
-              title: Text('Order #${item.order?.orderCode ?? "Unknown"}'),
-            )).toList() ?? [],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const Text('Pallet chờ xếp', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(12)),
+                        child: Text('${_unassignedPallets.length}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                      ),
+                    ],
+                  ),
+                  TextButton.icon(
+                    onPressed: _showCreatePalletDialog,
+                    icon: const Icon(Icons.add, size: 16),
+                    label: const Text('Tạo Pallet'),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      backgroundColor: AppColors.primary.withOpacity(0.1),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: _isLoadingResources
+                    ? const Center(child: CircularProgressIndicator())
+                    : ListView.builder(
+                        itemCount: _unassignedPallets.length,
+                        itemBuilder: (context, index) {
+                          final pallet = _unassignedPallets[index];
+                          return _buildDraggablePallet(pallet);
+                        },
+                      ),
+              ),
+            ],
           ),
         );
       },
-    );
-  }
-
-  Widget _buildResourcesColumn() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        children: [
-          // Top Half: Order Pool
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Text('Bể chứa Đơn hàng', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(12)),
-                      child: Text('${_newOrders.length}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                const Text('Kéo thả đơn hàng vào chuyến xe hoặc pallet chờ', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: _isLoadingResources
-                      ? const Center(child: CircularProgressIndicator())
-                      : ListView.builder(
-                          itemCount: _newOrders.length,
-                          itemBuilder: (context, index) {
-                            final order = _newOrders[index];
-                            return _buildDraggableOrder(order);
-                          },
-                        ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 32),
-          // Bottom Half: Waiting Pallets
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        const Text('Pallet chờ xếp', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(12)),
-                          child: Text('${_unassignedPallets.length}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                        ),
-                      ],
-                    ),
-                    TextButton.icon(
-                      onPressed: () {
-                        // Create empty pallet
-                        _dispatchService.createPallet({
-                          "weight": 0.0,
-                          "volume": 0.0,
-                        }).then((_) => _loadData());
-                      },
-                      icon: const Icon(Icons.add, size: 16),
-                      label: const Text('Tạo Pallet'),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        backgroundColor: AppColors.primary.withOpacity(0.1),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: _isLoadingResources
-                      ? const Center(child: CircularProgressIndicator())
-                      : ListView.builder(
-                          itemCount: _unassignedPallets.length,
-                          itemBuilder: (context, index) {
-                            final pallet = _unassignedPallets[index];
-                            return _buildDraggablePallet(pallet);
-                          },
-                        ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDraggableOrder(OrderModel order) {
-    return Draggable<OrderModel>(
-      data: order,
-      feedback: Material(
-        elevation: 8,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          width: 300,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.primary, width: 2),
-          ),
-          child: Text(order.orderCode ?? 'Order', style: const TextStyle(fontWeight: FontWeight.bold)),
-        ),
-      ),
-      childWhenDragging: Opacity(
-        opacity: 0.5,
-        child: _buildOrderCard(order),
-      ),
-      child: _buildOrderCard(order),
-    );
-  }
-
-  Widget _buildOrderCard(OrderModel order) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(order.orderCode ?? 'Tài liệu', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-          const SizedBox(height: 4),
-          Text('${order.totalWeightKg ?? 0}kg • ${order.deliveryProvince ?? ""}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: const Text('NEW', style: TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
     );
   }
 
@@ -920,8 +702,18 @@ class _DispatchManagementPageState extends State<DispatchManagementPage> {
     return DragTarget<OrderModel>(
       onAccept: (order) async {
         if (pallet.palletId != null && order.orderCode != null) {
-          await _dispatchService.addOrderToPallet(pallet.palletId!, order.orderCode!);
-          _loadData();
+          try {
+            await _dispatchService.addOrderToPallet(pallet.palletId!, order.orderCode!);
+            _loadData();
+          } catch (e) {
+            String errorMsg = 'Lỗi thêm đơn hàng vào Pallet';
+            if (e is DioException && e.response?.data != null) {
+              errorMsg = e.response!.data['message'] ?? errorMsg;
+            }
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+            );
+          }
         }
       },
       builder: (context, candidateData, rejectedData) {
@@ -932,57 +724,172 @@ class _DispatchManagementPageState extends State<DispatchManagementPage> {
             border: Border.all(color: candidateData.isNotEmpty ? AppColors.success : AppColors.border),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.inventory_2, color: AppColors.primary, size: 20),
-                        const SizedBox(width: 8),
-                        Text(pallet.palletCode ?? 'Unknown Pallet', style: const TextStyle(fontWeight: FontWeight.bold)),
-                      ],
+          child: ExpansionTile(
+            leading: const Icon(Icons.inventory_2, color: AppColors.primary, size: 20),
+            title: Text(pallet.palletCode ?? 'Unknown Pallet', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+            subtitle: Text('${pallet.palletItems?.length ?? 0} kiện • ${pallet.totalWeightKg ?? 0}kg', style: const TextStyle(color: AppColors.textSecondary)),
+            shape: const Border(),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (pallet.status != null) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: _getPalletStatusColor(pallet.status).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.info.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(4),
+                    child: Text(
+                      _getPalletStatusDisplayName(pallet.status),
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: _getPalletStatusColor(pallet.status),
+                        fontWeight: FontWeight.bold,
                       ),
-                      child: const Text('Chờ xếp xe', style: TextStyle(color: AppColors.info, fontSize: 10, fontWeight: FontWeight.bold)),
                     ),
-                  ],
-                ),
-              ),
-              if (isEmpty)
-                Container(
-                  margin: const EdgeInsets.only(left: 12, right: 12, bottom: 12),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.darkest,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.border, style: BorderStyle.solid), // Should be dashed if possible, solid for now
                   ),
-                  child: const Center(
-                    child: Text('Pallet trống. Kéo thả đơn hàng vào đây.', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                  const SizedBox(width: 8),
+                ] else ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.info.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text('Chờ xếp xe', style: TextStyle(color: AppColors.info, fontSize: 10, fontWeight: FontWeight.bold)),
                   ),
-                )
-              else
-                Padding(
-                  padding: const EdgeInsets.only(left: 12, right: 12, bottom: 12),
-                  child: Row(
-                    children: [
-                      Text('${pallet.palletItems?.length ?? 0} kiện • ${pallet.totalWeightKg ?? 0}kg', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                    ],
+                  const SizedBox(width: 8),
+                ],
+                if (pallet.status == 'CREATING') ...[
+                  IconButton(
+                    icon: const Icon(Icons.lock_open, size: 18, color: AppColors.primary),
+                    onPressed: pallet.palletId != null
+                        ? () async {
+                            try {
+                              await _dispatchService.updateStatusToCanSeal(pallet.palletId!);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Cập nhật trạng thái Pallet thành công!'), backgroundColor: Colors.green),
+                              );
+                              _loadData();
+                              if (_selectedTrip != null) {
+                                _refreshTripDetails();
+                              }
+                            } catch (e) {
+                              String errorMsg = 'Lỗi cập nhật trạng thái Pallet';
+                              if (e is DioException && e.response?.data != null) {
+                                errorMsg = e.response!.data['message'] ?? errorMsg;
+                              }
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+                              );
+                            }
+                          }
+                        : null,
+                    tooltip: 'Sẵn sàng niêm phong (Can Seal)',
                   ),
-                ),
-            ],
+                ],
+                if (pallet.palletId != null)
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                    onPressed: () async {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Xác nhận xóa'),
+                          content: const Text('Bạn có chắc chắn muốn xóa Pallet này không?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text('Hủy'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: const Text('Xóa', style: TextStyle(color: Colors.red)),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirm == true) {
+                        try {
+                          await _dispatchService.deletePallet(pallet.palletId!);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Xóa Pallet thành công!'), backgroundColor: Colors.green),
+                          );
+                          _loadData();
+                          if (_selectedTrip != null) {
+                            _refreshTripDetails();
+                          }
+                        } catch (e) {
+                          String errorMsg = 'Lỗi xóa Pallet';
+                          if (e is DioException && e.response?.data != null) {
+                            errorMsg = e.response!.data['message'] ?? errorMsg;
+                          }
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+                          );
+                        }
+                      }
+                    },
+                    tooltip: 'Xóa Pallet',
+                  ),
+              ],
+            ),
+            children: isEmpty
+                ? [
+                    Container(
+                      margin: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.darkest,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: const Center(
+                        child: Text('Pallet trống. Kéo thả đơn hàng vào đây.', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                      ),
+                    )
+                  ]
+                : pallet.palletItems?.map((item) {
+                    final order = item.order;
+                    if (order == null) return const SizedBox();
+                    return Draggable<DraggedPalletItem>(
+                      data: DraggedPalletItem(palletId: pallet.palletId!, order: order),
+                      feedback: Material(
+                        elevation: 8,
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          width: 250,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            border: Border.all(color: AppColors.primary, width: 2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text('Order #${order.orderCode ?? "N/A"}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                      childWhenDragging: Opacity(
+                        opacity: 0.5,
+                        child: ListTile(
+                          title: Text('Order #${order.orderCode ?? "N/A"}', style: const TextStyle(color: AppColors.textPrimary)),
+                        ),
+                      ),
+                      child: ListTile(
+                        title: Text('Order #${order.orderCode ?? "N/A"}', style: const TextStyle(color: AppColors.textPrimary)),
+                        trailing: const Icon(Icons.drag_indicator, size: 16, color: AppColors.textSecondary),
+                      ),
+                    );
+                  }).toList() ?? [],
           ),
         );
       },
     );
   }
 }
+
+class DraggedPalletItem {
+  final int palletId;
+  final OrderModel order;
+  DraggedPalletItem({required this.palletId, required this.order});
+}
+

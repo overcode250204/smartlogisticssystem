@@ -18,6 +18,7 @@ class WarehouseModel {
   final String province;
   final double latitude;
   final double longitude;
+  final String? startDeliveryTime;
 
   const WarehouseModel({
     required this.warehouseId,
@@ -27,6 +28,7 @@ class WarehouseModel {
     required this.province,
     required this.latitude,
     required this.longitude,
+    this.startDeliveryTime,
   });
 
   factory WarehouseModel.fromJson(Map<String, dynamic> json) {
@@ -41,6 +43,7 @@ class WarehouseModel {
       province: json['province']?.toString() ?? '',
       latitude: (json['latitude'] as num?)?.toDouble() ?? 0.0,
       longitude: (json['longitude'] as num?)?.toDouble() ?? 0.0,
+      startDeliveryTime: json['startDeliveryTime']?.toString(),
     );
   }
 }
@@ -52,6 +55,7 @@ class WarehouseCreateRequest {
   final String province;
   final double latitude;
   final double longitude;
+  final String? startDeliveryTime;
 
   const WarehouseCreateRequest({
     required this.name,
@@ -60,6 +64,7 @@ class WarehouseCreateRequest {
     required this.province,
     required this.latitude,
     required this.longitude,
+    this.startDeliveryTime,
   });
 
   Map<String, dynamic> toJson() {
@@ -70,6 +75,7 @@ class WarehouseCreateRequest {
       'province': province,
       'latitude': latitude,
       'longitude': longitude,
+      'startDeliveryTime': startDeliveryTime,
     };
   }
 }
@@ -81,6 +87,7 @@ class WarehouseUpdateRequest {
   final String province;
   final double latitude;
   final double longitude;
+  final String? startDeliveryTime;
 
   const WarehouseUpdateRequest({
     required this.name,
@@ -89,6 +96,7 @@ class WarehouseUpdateRequest {
     required this.province,
     required this.latitude,
     required this.longitude,
+    this.startDeliveryTime,
   });
 
   Map<String, dynamic> toJson() {
@@ -99,6 +107,7 @@ class WarehouseUpdateRequest {
       'province': province,
       'latitude': latitude,
       'longitude': longitude,
+      'startDeliveryTime': startDeliveryTime,
     };
   }
 }
