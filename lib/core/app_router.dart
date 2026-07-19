@@ -7,6 +7,8 @@ import 'package:smartlogisticssystem/feature/authentication/screens/mobile_login
 import 'package:smartlogisticssystem/feature/authentication/screens/splash_screen.dart';
 import 'package:smartlogisticssystem/feature/driver/driver_screens/driver_screen.dart';
 import 'package:smartlogisticssystem/feature/staff/staff_screens/staff_screen.dart';
+import 'package:smartlogisticssystem/feature/staff/staff_screens/pallet_task_detail_page.dart';
+import 'package:smartlogisticssystem/feature/staff/staff_screens/pallet_task_list_page.dart';
 import 'package:smartlogisticssystem/feature/inventory/screens/dashboard_page.dart';
 import 'package:smartlogisticssystem/feature/inventory/screens/export_page.dart';
 import 'package:smartlogisticssystem/feature/inventory/screens/import_page.dart';
@@ -66,6 +68,29 @@ final appRouter = GoRouter(
       },
       pageBuilder: (context, state) =>
           const NoTransitionPage(child: StaffScreen()),
+    ),
+    GoRoute(
+      path: '/staff/pallet-tasks',
+      redirect: (context, state) async {
+        if (!await AuthSession.isStaff()) return '/login';
+        return null;
+      },
+      pageBuilder: (context, state) =>
+          const NoTransitionPage(child: PalletTaskListPage()),
+    ),
+    GoRoute(
+      path: '/staff/pallet-tasks/:id',
+      redirect: (context, state) async {
+        if (!await AuthSession.isStaff()) return '/login';
+        return null;
+      },
+      pageBuilder: (context, state) {
+        final id = int.tryParse(state.pathParameters['id'] ?? '');
+        if (id == null) {
+          return const NoTransitionPage(child: PalletTaskListPage());
+        }
+        return NoTransitionPage(child: PalletTaskDetailPage(palletId: id));
+      },
     ),
     ShellRoute(
       builder: (context, state, child) {
