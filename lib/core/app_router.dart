@@ -6,6 +6,7 @@ import 'package:smartlogisticssystem/feature/authentication/screens/login_screen
 import 'package:smartlogisticssystem/feature/authentication/screens/mobile_login_screen.dart';
 import 'package:smartlogisticssystem/feature/authentication/screens/splash_screen.dart';
 import 'package:smartlogisticssystem/feature/driver/driver_screens/driver_screen.dart';
+import 'package:smartlogisticssystem/feature/driver/linehaul_driver/linehaul_driver_navigation.dart';
 import 'package:smartlogisticssystem/feature/staff/staff_screens/staff_screen.dart';
 import 'package:smartlogisticssystem/feature/staff/staff_screens/pallet_task_detail_page.dart';
 import 'package:smartlogisticssystem/feature/staff/staff_screens/pallet_task_list_page.dart';
