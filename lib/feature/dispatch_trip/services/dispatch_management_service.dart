@@ -10,9 +10,11 @@ import 'package:smartlogisticssystem/data/model/driver_model.dart';
 class DispatchManagementService {
   final ApiClient _apiClient = ApiClient();
 
-  Future<List<LinehaulTripModel>> getAllLinehaulTrips() async {
+  Future<List<LinehaulTripModel>> getAllLinehaulTrips({String? status}) async {
     try {
-      final response = await _apiClient.get('linehaul-trip');
+      final queryParams = <String, dynamic>{};
+      if (status != null) queryParams['status'] = status;
+      final response = await _apiClient.get('linehaul-trip', queryParameters: queryParams);
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data['data'];
         return data.map((e) => LinehaulTripModel.fromJson(e)).toList();
@@ -25,9 +27,11 @@ class DispatchManagementService {
     }
   }
 
-  Future<List<LocalTripModel>> getAllLocalTrips() async {
+  Future<List<LocalTripModel>> getAllLocalTrips({String? status}) async {
     try {
-      final response = await _apiClient.get('admin/local-trips');
+      final queryParams = <String, dynamic>{};
+      if (status != null) queryParams['status'] = status;
+      final response = await _apiClient.get('admin/local-trips', queryParameters: queryParams);
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data['data'];
         return data.map((e) => LocalTripModel.fromJson(e)).toList();
@@ -177,9 +181,13 @@ class DispatchManagementService {
     }
   }
 
-  Future<List<DriverModel>> getAllDrivers() async {
+  Future<List<DriverModel>> getAllDrivers({List<int>? currentDriverIds}) async {
     try {
-      final response = await _apiClient.get('drivers');
+      final queryParams = <String, dynamic>{};
+      if (currentDriverIds != null && currentDriverIds.isNotEmpty) {
+        queryParams['currentDriverIds'] = currentDriverIds.join(',');
+      }
+      final response = await _apiClient.get('drivers', queryParameters: queryParams);
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data['data'];
         return data.map((e) => DriverModel.fromJson(e)).toList();

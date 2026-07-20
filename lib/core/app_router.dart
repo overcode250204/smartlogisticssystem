@@ -6,6 +6,7 @@ import 'package:smartlogisticssystem/feature/authentication/screens/login_screen
 import 'package:smartlogisticssystem/feature/authentication/screens/mobile_login_screen.dart';
 import 'package:smartlogisticssystem/feature/authentication/screens/splash_screen.dart';
 import 'package:smartlogisticssystem/feature/driver/driver_screens/driver_screen.dart';
+import 'package:smartlogisticssystem/feature/driver/linehaul_driver/linehaul_driver_navigation.dart';
 import 'package:smartlogisticssystem/feature/staff/staff_screens/staff_screen.dart';
 import 'package:smartlogisticssystem/feature/staff/staff_screens/pallet_task_detail_page.dart';
 import 'package:smartlogisticssystem/feature/staff/staff_screens/pallet_task_list_page.dart';
@@ -29,6 +30,7 @@ import 'package:smartlogisticssystem/feature/warehouse/screens/warehouse_managem
 import 'package:smartlogisticssystem/feature/route_config/screens/route_config_management_page.dart';
 import 'package:smartlogisticssystem/feature/order/screens/order_management_page.dart';
 import 'package:smartlogisticssystem/feature/dispatch_trip/screens/dispatch_management_page.dart';
+import 'package:smartlogisticssystem/feature/trip_dashboard/screens/trip_dashboard_page.dart';
 import 'package:smartlogisticssystem/widgets/app_shell.dart';
 import 'package:smartlogisticssystem/feature/exception_reason/screens/exception_reasons_page.dart';
 // Customer portal
@@ -42,6 +44,7 @@ import 'package:smartlogisticssystem/feature/customer/screens/customer_orders_sc
 import 'package:smartlogisticssystem/feature/customer/screens/customer_order_detail_screen.dart';
 import 'package:smartlogisticssystem/feature/customer/screens/customer_tracking_screen.dart';
 import 'package:smartlogisticssystem/feature/customer/screens/customer_profile_screen.dart';
+import 'package:smartlogisticssystem/feature/live_tracking/screens/live_tracking_map_page.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
@@ -229,11 +232,11 @@ final appRouter = GoRouter(
           pageBuilder: (context, state) =>
               const NoTransitionPage(child: DashboardPage()),
         ),
-        // GoRoute(
-        //   path: '/trip-dashboard',
-        //   pageBuilder: (context, state) =>
-        //       const NoTransitionPage(child: TripDashboardPage()),
-        // ),
+        GoRoute(
+          path: '/trip-dashboard',
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: TripDashboardPage()),
+        ),
         GoRoute(
           path: '/inventory',
           pageBuilder: (context, state) =>
@@ -337,6 +340,125 @@ final appRouter = GoRouter(
           },
           pageBuilder: (context, state) =>
               const NoTransitionPage(child: ExceptionReasonsPage()),
+        ),
+        GoRoute(
+          path: '/live-tracking',
+          redirect: (context, state) async {
+            final prefs = await SharedPreferences.getInstance();
+            final roleId = prefs.getInt('roleId');
+            if (roleId != 1) {
+              return '/dashboard';
+            }
+            return null;
+          },
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: LiveTrackingMapPage()),
+        ),
+      ],
+    ),
+
+    // ── Customer Portal (roleId == 5) ──────────────────────────
+    ShellRoute(
+      builder: (context, state, child) {
+        return CustomerShell(location: state.uri.path, child: child);
+      },
+      routes: [
+        GoRoute(
+          path: '/customer',
+          redirect: (context, state) async {
+            final prefs = await SharedPreferences.getInstance();
+            final roleId = prefs.getInt('roleId');
+            if (roleId != 5) return '/login';
+            return null;
+          },
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: CustomerDashboard()),
+        ),
+        GoRoute(
+          path: '/customer/products',
+          redirect: (context, state) async {
+            final prefs = await SharedPreferences.getInstance();
+            if ((prefs.getInt('roleId') ?? 0) != 5) return '/login';
+            return null;
+          },
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: CustomerProductsScreen()),
+        ),
+        GoRoute(
+          path: '/customer/products/:id',
+          redirect: (context, state) async {
+            final prefs = await SharedPreferences.getInstance();
+            if ((prefs.getInt('roleId') ?? 0) != 5) return '/login';
+            return null;
+          },
+          pageBuilder: (context, state) {
+            final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+            return NoTransitionPage(child: CustomerProductDetailScreen(productId: id));
+          },
+        ),
+        GoRoute(
+          path: '/customer/cart',
+          redirect: (context, state) async {
+            final prefs = await SharedPreferences.getInstance();
+            if ((prefs.getInt('roleId') ?? 0) != 5) return '/login';
+            return null;
+          },
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: CustomerCartScreen()),
+        ),
+        GoRoute(
+          path: '/customer/checkout',
+          redirect: (context, state) async {
+            final prefs = await SharedPreferences.getInstance();
+            if ((prefs.getInt('roleId') ?? 0) != 5) return '/login';
+            return null;
+          },
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: CustomerCheckoutScreen()),
+        ),
+        GoRoute(
+          path: '/customer/orders',
+          redirect: (context, state) async {
+            final prefs = await SharedPreferences.getInstance();
+            if ((prefs.getInt('roleId') ?? 0) != 5) return '/login';
+            return null;
+          },
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: CustomerOrdersScreen()),
+        ),
+        GoRoute(
+          path: '/customer/orders/:id',
+          redirect: (context, state) async {
+            final prefs = await SharedPreferences.getInstance();
+            if ((prefs.getInt('roleId') ?? 0) != 5) return '/login';
+            return null;
+          },
+          pageBuilder: (context, state) {
+            final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+            return NoTransitionPage(child: CustomerOrderDetailScreen(orderId: id));
+          },
+        ),
+        GoRoute(
+          path: '/customer/orders/:id/tracking',
+          redirect: (context, state) async {
+            final prefs = await SharedPreferences.getInstance();
+            if ((prefs.getInt('roleId') ?? 0) != 5) return '/login';
+            return null;
+          },
+          pageBuilder: (context, state) {
+            final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+            return NoTransitionPage(child: CustomerTrackingScreen(orderId: id));
+          },
+        ),
+        GoRoute(
+          path: '/customer/profile',
+          redirect: (context, state) async {
+            final prefs = await SharedPreferences.getInstance();
+            if ((prefs.getInt('roleId') ?? 0) != 5) return '/login';
+            return null;
+          },
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: CustomerProfileScreen()),
         ),
       ],
     ),
@@ -471,6 +593,7 @@ String _titleForPath(String path) {
     '/suppliers' => 'Nhà cung cấp',
     '/categories' => 'Danh mục',
     '/exception-reasons' => 'Lý do ngoại lệ',
+    '/live-tracking' => 'Giám sát live',
     '/users' => 'Quản lý nhân sự',
     '/zones' => 'Quản lý khu vực',
     '/vehicles' => 'Quản lý phương tiện',

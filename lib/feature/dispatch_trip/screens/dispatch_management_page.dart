@@ -46,6 +46,8 @@ class _DispatchManagementPageState extends State<DispatchManagementPage> {
   List<VehicleModel> _allVehicles = [];
   List<DriverModel> _allDrivers = [];
   List<RouteConfigModel> _allRouteConfigs = [];
+  String? _selectedLinehaulStatus;
+  String? _selectedLocalStatus;
 
   @override
   void initState() {
@@ -60,8 +62,8 @@ class _DispatchManagementPageState extends State<DispatchManagementPage> {
     });
 
     try {
-      final linehaulRes = await _dispatchService.getAllLinehaulTrips();
-      final localRes = await _dispatchService.getAllLocalTrips();
+      final linehaulRes = await _dispatchService.getAllLinehaulTrips(status: _selectedLinehaulStatus);
+      final localRes = await _dispatchService.getAllLocalTrips(status: _selectedLocalStatus);
       final ordersRes = await _dispatchService.getOrdersByStatus('NEW');
       final palletsRes = await _dispatchService.getAllPallets();
       final vehiclesRes = await VehicleService().getAllVehicles();
@@ -173,32 +175,55 @@ class _DispatchManagementPageState extends State<DispatchManagementPage> {
   }
 
   void _showEditLinehaulDialog(LinehaulTripModel trip) {
+    final currentDriverIds = <int>[];
+    if (trip.linehaulTripDriver != null) {
+      for (var d in trip.linehaulTripDriver!) {
+        if (d.driver?.driverId != null) {
+          currentDriverIds.add(d.driver!.driverId!);
+        }
+      }
+    }
+
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) {
-        return EditLinehaulTripDialog(
-          trip: trip,
-          allVehicles: _allVehicles,
-          allDrivers: _allDrivers,
-          onUpdate: (updateData) async {
-            try {
-              await _dispatchService.updateLinehaulTrip(trip.linehaulId!, updateData);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Cập nhật chuyến đi thành công!'), backgroundColor: Colors.green),
-              );
-              _refreshTripDetails();
-            } catch (e) {
-              String errorMsg = 'Lỗi cập nhật chuyến đi';
-              if (e is DioException && e.response?.data != null) {
-                errorMsg = e.response!.data['message'] ?? errorMsg;
-              } else {
-                errorMsg = e.toString();
-              }
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
-              );
-              rethrow;
+        return FutureBuilder<List<dynamic>>(
+          future: Future.wait([
+            VehicleService().getAllVehicles(currentVehicleId: trip.vehicle?.vehicleId),
+            _dispatchService.getAllDrivers(currentDriverIds: currentDriverIds.isNotEmpty ? currentDriverIds : null),
+          ]),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
             }
+            final vehicles = snapshot.data![0] as List<VehicleModel>;
+            final drivers = snapshot.data![1] as List<DriverModel>;
+            return EditLinehaulTripDialog(
+              trip: trip,
+              allVehicles: vehicles,
+              allDrivers: drivers,
+              onUpdate: (updateData) async {
+                try {
+                  await _dispatchService.updateLinehaulTrip(trip.linehaulId!, updateData);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Cập nhật chuyến đi thành công!'), backgroundColor: Colors.green),
+                  );
+                  _refreshTripDetails();
+                } catch (e) {
+                  String errorMsg = 'Lỗi cập nhật chuyến đi';
+                  if (e is DioException && e.response?.data != null) {
+                    errorMsg = e.response!.data['message'] ?? errorMsg;
+                  } else {
+                    errorMsg = e.toString();
+                  }
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+                  );
+                  rethrow;
+                }
+              },
+            );
           },
         );
       },
@@ -208,35 +233,49 @@ class _DispatchManagementPageState extends State<DispatchManagementPage> {
   void _showEditLocalDialog(LocalTripModel trip) {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) {
-        return EditLocalTripDialog(
-          trip: trip,
-          allVehicles: _allVehicles,
-          allDrivers: _allDrivers,
-          onSave: (vehicleId, driverId) async {
-            try {
-              if (vehicleId != null && vehicleId != trip.vehicle?.vehicleId) {
-                await _dispatchService.changeLocalTripVehicle(trip.localTripId!, vehicleId);
-              }
-              if (driverId != null && driverId != trip.driver?.driverId) {
-                await _dispatchService.changeLocalTripDriver(trip.localTripId!, driverId);
-              }
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Cập nhật chuyến đi Last-Mile thành công!'), backgroundColor: Colors.green),
-              );
-              _refreshTripDetails();
-            } catch (e) {
-              String errorMsg = 'Lỗi cập nhật chuyến đi Last-Mile';
-              if (e is DioException && e.response?.data != null) {
-                errorMsg = e.response!.data['message'] ?? errorMsg;
-              } else {
-                errorMsg = e.toString();
-              }
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
-              );
-              rethrow;
+        return FutureBuilder<List<dynamic>>(
+          future: Future.wait([
+            VehicleService().getAllVehicles(currentVehicleId: trip.vehicle?.vehicleId),
+            _dispatchService.getAllDrivers(currentDriverIds: trip.driver?.driverId != null ? [trip.driver!.driverId!] : null),
+          ]),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
             }
+            final vehicles = snapshot.data![0] as List<VehicleModel>;
+            final drivers = snapshot.data![1] as List<DriverModel>;
+            return EditLocalTripDialog(
+              trip: trip,
+              allVehicles: vehicles,
+              allDrivers: drivers,
+              onSave: (vehicleId, driverId) async {
+                try {
+                  if (vehicleId != null && vehicleId != trip.vehicle?.vehicleId) {
+                    await _dispatchService.changeLocalTripVehicle(trip.localTripId!, vehicleId);
+                  }
+                  if (driverId != null && driverId != trip.driver?.driverId) {
+                    await _dispatchService.changeLocalTripDriver(trip.localTripId!, driverId);
+                  }
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Cập nhật chuyến đi Last-Mile thành công!'), backgroundColor: Colors.green),
+                  );
+                  _refreshTripDetails();
+                } catch (e) {
+                  String errorMsg = 'Lỗi cập nhật chuyến đi Last-Mile';
+                  if (e is DioException && e.response?.data != null) {
+                    errorMsg = e.response!.data['message'] ?? errorMsg;
+                  } else {
+                    errorMsg = e.toString();
+                  }
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+                  );
+                  rethrow;
+                }
+              },
+            );
           },
         );
       },
@@ -366,7 +405,20 @@ class _DispatchManagementPageState extends State<DispatchManagementPage> {
               onToggleLinehaul: (isLinehaul) => setState(() {
                 _isLinehaulSelected = isLinehaul;
                 _selectedTrip = null;
+                _loadData();
               }),
+              selectedStatus: _isLinehaulSelected ? _selectedLinehaulStatus : _selectedLocalStatus,
+              onStatusChanged: (val) {
+                setState(() {
+                  if (_isLinehaulSelected) {
+                    _selectedLinehaulStatus = val;
+                  } else {
+                    _selectedLocalStatus = val;
+                  }
+                  _selectedTrip = null;
+                });
+                _loadData();
+              },
               onCreateTrip: () async {
                 if (_isLinehaulSelected) {
                   _showCreateLinehaulTripDialog();

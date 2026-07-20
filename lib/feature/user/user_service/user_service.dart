@@ -30,8 +30,12 @@ class UserService {
     int roleId,
     String? identificationNumber,
     String? origin,
-    String? address,
-  ) async {
+    String? address, {
+    String? driverType,
+    int? zoneId,
+    int? currentWarehouseId,
+    int? currentVehicleId,
+  }) async {
     try {
       final response = await _client.post(
         'users',
@@ -45,6 +49,10 @@ class UserService {
           'identificationNumber': identificationNumber,
           'origin': origin,
           'address': address,
+          'driverType': driverType,
+          'zoneId': zoneId,
+          'currentWarehouseId': currentWarehouseId,
+          'currentVehicleId': currentVehicleId,
         },
       );
       return response.statusCode == 200;
@@ -62,8 +70,12 @@ class UserService {
     bool isActive,
     String? identificationNumber,
     String? origin,
-    String? address,
-  ) async {
+    String? address, {
+    String? driverType,
+    int? zoneId,
+    int? currentWarehouseId,
+    int? currentVehicleId,
+  }) async {
     try {
       final response = await _client.put(
         'users/$userId',
@@ -75,6 +87,10 @@ class UserService {
           'identificationNumber': identificationNumber,
           'origin': origin,
           'address': address,
+          'driverType': driverType,
+          'zoneId': zoneId,
+          'currentWarehouseId': currentWarehouseId,
+          'currentVehicleId': currentVehicleId,
         },
       );
       return response.statusCode == 200;
