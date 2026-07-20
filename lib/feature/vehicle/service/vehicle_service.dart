@@ -5,9 +5,13 @@ import 'package:dio/dio.dart';
 class VehicleService {
   final ApiClient _client = ApiClient();
 
-  Future<List<VehicleModel>> getAllVehicles() async {
+  Future<List<VehicleModel>> getAllVehicles({int? currentVehicleId}) async {
     try {
-      final response = await _client.get('vehicles');
+      final queryParams = <String, dynamic>{};
+      if (currentVehicleId != null) {
+        queryParams['currentVehicleId'] = currentVehicleId;
+      }
+      final response = await _client.get('vehicles', queryParameters: queryParams);
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data['data'];
         return data.map((item) => VehicleModel.fromJson(item)).toList();

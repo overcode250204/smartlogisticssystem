@@ -27,8 +27,10 @@ import 'package:smartlogisticssystem/feature/warehouse/screens/warehouse_managem
 import 'package:smartlogisticssystem/feature/route_config/screens/route_config_management_page.dart';
 import 'package:smartlogisticssystem/feature/order/screens/order_management_page.dart';
 import 'package:smartlogisticssystem/feature/dispatch_trip/screens/dispatch_management_page.dart';
+import 'package:smartlogisticssystem/feature/trip_dashboard/screens/trip_dashboard_page.dart';
 import 'package:smartlogisticssystem/widgets/app_shell.dart';
 import 'package:smartlogisticssystem/feature/exception_reason/screens/exception_reasons_page.dart';
+import 'package:smartlogisticssystem/feature/live_tracking/screens/live_tracking_map_page.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
@@ -193,11 +195,11 @@ final appRouter = GoRouter(
           pageBuilder: (context, state) =>
               const NoTransitionPage(child: DashboardPage()),
         ),
-        // GoRoute(
-        //   path: '/trip-dashboard',
-        //   pageBuilder: (context, state) =>
-        //       const NoTransitionPage(child: TripDashboardPage()),
-        // ),
+        GoRoute(
+          path: '/trip-dashboard',
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: TripDashboardPage()),
+        ),
         GoRoute(
           path: '/inventory',
           pageBuilder: (context, state) =>
@@ -302,6 +304,19 @@ final appRouter = GoRouter(
           pageBuilder: (context, state) =>
               const NoTransitionPage(child: ExceptionReasonsPage()),
         ),
+        GoRoute(
+          path: '/live-tracking',
+          redirect: (context, state) async {
+            final prefs = await SharedPreferences.getInstance();
+            final roleId = prefs.getInt('roleId');
+            if (roleId != 1) {
+              return '/dashboard';
+            }
+            return null;
+          },
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: LiveTrackingMapPage()),
+        ),
       ],
     ),
   ],
@@ -329,6 +344,7 @@ String _titleForPath(String path) {
     '/suppliers' => 'Nhà cung cấp',
     '/categories' => 'Danh mục',
     '/exception-reasons' => 'Lý do ngoại lệ',
+    '/live-tracking' => 'Giám sát live',
     '/users' => 'Quản lý nhân sự',
     '/zones' => 'Quản lý khu vực',
     '/vehicles' => 'Quản lý phương tiện',

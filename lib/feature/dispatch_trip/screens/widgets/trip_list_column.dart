@@ -12,6 +12,8 @@ class TripListColumn extends StatelessWidget {
   final ValueChanged<dynamic> onSelectTrip;
   final ValueChanged<bool> onToggleLinehaul;
   final VoidCallback onCreateTrip;
+  final String? selectedStatus;
+  final ValueChanged<String?> onStatusChanged;
 
   const TripListColumn({
     super.key,
@@ -23,6 +25,8 @@ class TripListColumn extends StatelessWidget {
     required this.onSelectTrip,
     required this.onToggleLinehaul,
     required this.onCreateTrip,
+    required this.selectedStatus,
+    required this.onStatusChanged,
   });
 
   Color _getLinehaulStatusColor(LinehaulTripStatus? status) {
@@ -169,16 +173,28 @@ class TripListColumn extends StatelessWidget {
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
+                    child: DropdownButton<String?>(
                       isExpanded: true,
-                      value: 'Tất cả Trạng thái',
-                      items: ['Tất cả Trạng thái', 'Đang chuẩn bị', 'Sẵn sàng'].map((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value, style: const TextStyle(fontSize: 12)),
-                        );
-                      }).toList(),
-                      onChanged: (_) {},
+                      value: selectedStatus,
+                      items: (isLinehaulSelected 
+                          ? [
+                              const DropdownMenuItem<String?>(value: null, child: Text('Tất cả Trạng thái', style: TextStyle(fontSize: 12))),
+                              const DropdownMenuItem<String?>(value: 'PREPARING', child: Text('Preparing', style: TextStyle(fontSize: 12))),
+                              const DropdownMenuItem<String?>(value: 'CAN_START', child: Text('Can Start', style: TextStyle(fontSize: 12))),
+                              const DropdownMenuItem<String?>(value: 'EN_ROUTE', child: Text('En Route', style: TextStyle(fontSize: 12))),
+                              const DropdownMenuItem<String?>(value: 'ARRIVED', child: Text('Arrived', style: TextStyle(fontSize: 12))),
+                              const DropdownMenuItem<String?>(value: 'CANCELLED', child: Text('Cancelled', style: TextStyle(fontSize: 12))),
+                            ]
+                          : [
+                              const DropdownMenuItem<String?>(value: null, child: Text('Tất cả Trạng thái', style: TextStyle(fontSize: 12))),
+                              const DropdownMenuItem<String?>(value: 'PENDING_ACCEPTANCE', child: Text('Pending Acceptance', style: TextStyle(fontSize: 12))),
+                              const DropdownMenuItem<String?>(value: 'ACCEPTED', child: Text('Accepted', style: TextStyle(fontSize: 12))),
+                              const DropdownMenuItem<String?>(value: 'CANCELLED', child: Text('Cancelled', style: TextStyle(fontSize: 12))),
+                              const DropdownMenuItem<String?>(value: 'ASSIGNED', child: Text('Assigned', style: TextStyle(fontSize: 12))),
+                              const DropdownMenuItem<String?>(value: 'EXECUTING', child: Text('Executing', style: TextStyle(fontSize: 12))),
+                              const DropdownMenuItem<String?>(value: 'COMPLETED', child: Text('Completed', style: TextStyle(fontSize: 12))),
+                            ]),
+                      onChanged: onStatusChanged,
                     ),
                   ),
                 ),

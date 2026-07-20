@@ -122,6 +122,12 @@ class Sidebar extends StatelessWidget {
       icon: Icons.warning_amber_outlined,
       allowedRoleIds: {AuthSession.adminRoleId},
     ),
+    SidebarItem(
+      label: 'Giám sát live',
+      route: '/live-tracking',
+      icon: Icons.radar,
+      allowedRoleIds: {AuthSession.adminRoleId},
+    ),
   ];
 
   @override
