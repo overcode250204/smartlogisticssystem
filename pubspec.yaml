@@ -52,6 +52,7 @@ dependencies:
   flutter_map: ^6.1.0
   latlong2: ^0.9.1
   data_table_2: ^2.5.10
+  geolocator: ^14.0.2
 
 
 dev_dependencies:

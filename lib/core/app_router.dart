@@ -31,6 +31,17 @@ import 'package:smartlogisticssystem/feature/order/screens/order_management_page
 import 'package:smartlogisticssystem/feature/dispatch_trip/screens/dispatch_management_page.dart';
 import 'package:smartlogisticssystem/widgets/app_shell.dart';
 import 'package:smartlogisticssystem/feature/exception_reason/screens/exception_reasons_page.dart';
+// Customer portal
+import 'package:smartlogisticssystem/feature/customer/screens/customer_shell.dart';
+import 'package:smartlogisticssystem/feature/customer/screens/customer_dashboard.dart';
+import 'package:smartlogisticssystem/feature/customer/screens/customer_products_screen.dart';
+import 'package:smartlogisticssystem/feature/customer/screens/customer_product_detail_screen.dart';
+import 'package:smartlogisticssystem/feature/customer/screens/customer_cart_screen.dart';
+import 'package:smartlogisticssystem/feature/customer/screens/customer_checkout_screen.dart';
+import 'package:smartlogisticssystem/feature/customer/screens/customer_orders_screen.dart';
+import 'package:smartlogisticssystem/feature/customer/screens/customer_order_detail_screen.dart';
+import 'package:smartlogisticssystem/feature/customer/screens/customer_tracking_screen.dart';
+import 'package:smartlogisticssystem/feature/customer/screens/customer_profile_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
@@ -329,9 +340,115 @@ final appRouter = GoRouter(
         ),
       ],
     ),
+
+    // ── Customer Portal (roleId == 5) ──────────────────────────
+    ShellRoute(
+      builder: (context, state, child) {
+        return CustomerShell(location: state.uri.path, child: child);
+      },
+      routes: [
+        GoRoute(
+          path: '/customer',
+          redirect: (context, state) async {
+            final prefs = await SharedPreferences.getInstance();
+            final roleId = prefs.getInt('roleId');
+            if (roleId != 5) return '/login';
+            return null;
+          },
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: CustomerDashboard()),
+        ),
+        GoRoute(
+          path: '/customer/products',
+          redirect: (context, state) async {
+            final prefs = await SharedPreferences.getInstance();
+            if ((prefs.getInt('roleId') ?? 0) != 5) return '/login';
+            return null;
+          },
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: CustomerProductsScreen()),
+        ),
+        GoRoute(
+          path: '/customer/products/:id',
+          redirect: (context, state) async {
+            final prefs = await SharedPreferences.getInstance();
+            if ((prefs.getInt('roleId') ?? 0) != 5) return '/login';
+            return null;
+          },
+          pageBuilder: (context, state) {
+            final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+            return NoTransitionPage(child: CustomerProductDetailScreen(productId: id));
+          },
+        ),
+        GoRoute(
+          path: '/customer/cart',
+          redirect: (context, state) async {
+            final prefs = await SharedPreferences.getInstance();
+            if ((prefs.getInt('roleId') ?? 0) != 5) return '/login';
+            return null;
+          },
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: CustomerCartScreen()),
+        ),
+        GoRoute(
+          path: '/customer/checkout',
+          redirect: (context, state) async {
+            final prefs = await SharedPreferences.getInstance();
+            if ((prefs.getInt('roleId') ?? 0) != 5) return '/login';
+            return null;
+          },
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: CustomerCheckoutScreen()),
+        ),
+        GoRoute(
+          path: '/customer/orders',
+          redirect: (context, state) async {
+            final prefs = await SharedPreferences.getInstance();
+            if ((prefs.getInt('roleId') ?? 0) != 5) return '/login';
+            return null;
+          },
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: CustomerOrdersScreen()),
+        ),
+        GoRoute(
+          path: '/customer/orders/:id',
+          redirect: (context, state) async {
+            final prefs = await SharedPreferences.getInstance();
+            if ((prefs.getInt('roleId') ?? 0) != 5) return '/login';
+            return null;
+          },
+          pageBuilder: (context, state) {
+            final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+            return NoTransitionPage(child: CustomerOrderDetailScreen(orderId: id));
+          },
+        ),
+        GoRoute(
+          path: '/customer/orders/:id/tracking',
+          redirect: (context, state) async {
+            final prefs = await SharedPreferences.getInstance();
+            if ((prefs.getInt('roleId') ?? 0) != 5) return '/login';
+            return null;
+          },
+          pageBuilder: (context, state) {
+            final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+            return NoTransitionPage(child: CustomerTrackingScreen(orderId: id));
+          },
+        ),
+        GoRoute(
+          path: '/customer/profile',
+          redirect: (context, state) async {
+            final prefs = await SharedPreferences.getInstance();
+            if ((prefs.getInt('roleId') ?? 0) != 5) return '/login';
+            return null;
+          },
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: CustomerProfileScreen()),
+        ),
+      ],
+    ),
   ],
   errorBuilder: (context, state) =>
-      const Scaffold(body: Center(child: Text('KhÃ´ng tÃ¬m tháº¥y trang'))),
+      const Scaffold(body: Center(child: Text('Không tìm thấy trang'))),
 );
 
 String _titleForPath(String path) {
