@@ -1,5 +1,6 @@
 // File: lib/feature/driver/driver_screens/driver_screen.dart
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:smartlogisticssystem/feature/authentication/auth_service/auth_service.dart';
 
 // SỬA ĐƯỜNG DẪN IMPORT NÀY NẾU CẦN:
@@ -45,6 +46,12 @@ class DriverScreen extends StatelessWidget {
               'Màn hình Map Tracking GPS của Tài xế\n(Task của Đức)',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 18, color: Colors.black54),
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: () => context.push('/driver/local-trips'),
+              icon: const Icon(Icons.local_shipping),
+              label: const Text('Đơn giao hàng nội thành'),
             ),
           ],
         ),
