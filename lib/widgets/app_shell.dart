@@ -160,8 +160,22 @@ class _AppShellState extends State<AppShell> {
         isLoading: _notificationsLoadingNotifier,
         onRefresh: _loadNotifications,
         onMarkAsRead: _markNotificationAsRead,
+        onNotificationTap: _handleNotificationTap,
       ),
     );
+  }
+
+  Future<void> _handleNotificationTap(NotificationModel notification) async {
+    if (!mounted) return;
+    if (notification.type != 'PALLETIZATION_TASK') return;
+
+    Navigator.of(context, rootNavigator: true).pop();
+    final referenceId = notification.referenceId;
+    if (referenceId != null) {
+      context.go('/staff/pallet-tasks/$referenceId');
+      return;
+    }
+    context.go('/staff/pallet-tasks');
   }
 
   Future<void> _logout() async {

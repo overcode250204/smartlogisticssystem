@@ -4,6 +4,8 @@ class NotificationModel {
   final String message;
   final String type;
   final int? recipientId;
+  final String? referenceType;
+  final int? referenceId;
   final bool isRead;
   final DateTime? readAt;
   final DateTime createdAt;
@@ -14,6 +16,8 @@ class NotificationModel {
     required this.message,
     required this.type,
     this.recipientId,
+    this.referenceType,
+    this.referenceId,
     required this.isRead,
     this.readAt,
     required this.createdAt,
@@ -26,6 +30,8 @@ class NotificationModel {
       message: json['message']?.toString() ?? '',
       type: json['type']?.toString() ?? '',
       recipientId: _parseInt(json['recipientId']),
+      referenceType: json['referenceType']?.toString(),
+      referenceId: _parseInt(json['referenceId']),
       isRead: _parseBool(json['isRead'] ?? json['read']) ?? false,
       readAt: _parseDateTime(json['readAt']),
       createdAt: _parseDateTime(json['createdAt']) ?? DateTime.now(),
@@ -39,6 +45,8 @@ class NotificationModel {
       message: message,
       type: type,
       recipientId: recipientId,
+      referenceType: referenceType,
+      referenceId: referenceId,
       isRead: isRead ?? this.isRead,
       readAt: readAt ?? this.readAt,
       createdAt: createdAt,

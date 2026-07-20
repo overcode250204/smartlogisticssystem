@@ -3,8 +3,6 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smartlogisticssystem/feature/authentication/auth_service/auth_service.dart';
 import 'package:smartlogisticssystem/feature/driver/driver_screens/driver_register_screen.dart';
-import 'package:smartlogisticssystem/feature/driver/driver_screens/driver_screen.dart';
-import 'package:smartlogisticssystem/feature/staff/staff_screens/staff_screen.dart';
 
 class MobileLoginScreen extends StatefulWidget {
   const MobileLoginScreen({super.key});

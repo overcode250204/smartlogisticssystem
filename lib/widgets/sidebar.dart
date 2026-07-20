@@ -38,6 +38,12 @@ class Sidebar extends StatelessWidget {
       allowedRoleIds: {AuthSession.managerRoleId},
     ),
     SidebarItem(
+      label: 'Thống kê vận chuyển',
+      route: '/trip-dashboard',
+      icon: Icons.dashboard_customize_outlined,
+      allowedRoleIds: {AuthSession.adminRoleId, AuthSession.managerRoleId},
+    ),
+    SidebarItem(
       label: 'Quản lý kho',
       route: '/inventory',
       icon: Icons.inventory_2_outlined,
@@ -72,6 +78,48 @@ class Sidebar extends StatelessWidget {
       label: 'Quản lý nhân sự',
       route: '/users',
       icon: Icons.people_outline,
+      allowedRoleIds: {AuthSession.adminRoleId},
+    ),
+    SidebarItem(
+      label: 'Quản lý khu vực',
+      route: '/zones',
+      icon: Icons.map_outlined,
+      allowedRoleIds: {AuthSession.adminRoleId},
+    ),
+    SidebarItem(
+      label: 'Quản lý phương tiện',
+      route: '/vehicles',
+      icon: Icons.local_shipping_outlined,
+      allowedRoleIds: {AuthSession.adminRoleId},
+    ),
+    SidebarItem(
+      label: 'Quản lý nhà kho',
+      route: '/warehouses',
+      icon: Icons.warehouse_outlined,
+      allowedRoleIds: {AuthSession.adminRoleId},
+    ),
+    SidebarItem(
+      label: 'Cấu hình tuyến đường',
+      route: '/route-configs',
+      icon: Icons.alt_route_outlined,
+      allowedRoleIds: {AuthSession.adminRoleId},
+    ),
+    SidebarItem(
+      label: 'Quản lý đơn hàng',
+      route: '/orders',
+      icon: Icons.shopping_bag_outlined,
+      allowedRoleIds: {AuthSession.adminRoleId},
+    ),
+    SidebarItem(
+      label: 'Điều phối vận tải',
+      route: '/dispatch',
+      icon: Icons.local_shipping_outlined,
+      allowedRoleIds: {AuthSession.adminRoleId},
+    ),
+    SidebarItem(
+      label: 'Lý do ngoại lệ',
+      route: '/exception-reasons',
+      icon: Icons.warning_amber_outlined,
       allowedRoleIds: {AuthSession.adminRoleId},
     ),
   ];

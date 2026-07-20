@@ -5,8 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smartlogisticssystem/feature/authentication/auth_service/auth_service.dart';
 import 'package:smartlogisticssystem/feature/driver/driver_screens/driver_register_screen.dart';
-import 'package:smartlogisticssystem/feature/driver/driver_screens/driver_screen.dart';
-import 'package:smartlogisticssystem/feature/staff/staff_screens/staff_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -105,6 +103,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (roleId == 4) {
       context.go('/staff');
+      return;
+    }
+
+    if (roleId == 5) {
+      context.go('/customer');
       return;
     }
 
