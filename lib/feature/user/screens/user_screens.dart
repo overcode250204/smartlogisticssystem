@@ -6,6 +6,12 @@ import 'package:smartlogisticssystem/data/model/user_model.dart';
 import 'package:smartlogisticssystem/feature/authentication/auth_service/auth_service.dart';
 import 'package:smartlogisticssystem/feature/authentication/screens/login_screen.dart';
 import 'package:smartlogisticssystem/feature/user/user_service/user_service.dart';
+import 'package:smartlogisticssystem/feature/zone/service/zone_service.dart';
+import 'package:smartlogisticssystem/data/model/zone_model.dart';
+import 'package:smartlogisticssystem/feature/warehouse/service/warehouse_service.dart';
+import 'package:smartlogisticssystem/data/model/warehouse_model.dart';
+import 'package:smartlogisticssystem/feature/vehicle/service/vehicle_service.dart';
+import 'package:smartlogisticssystem/data/model/vehicle_model.dart';
 
 class UserListScreen extends StatefulWidget {
   final int currentRoleId;
@@ -39,11 +45,54 @@ class _UserListScreenState extends State<UserListScreen> {
   final TextEditingController _addressController = TextEditingController();
   int _selectedRoleId = 3;
   bool _isActive = true; // Quản lý trạng thái Hoạt động/Đã nghỉ trong Form
+  String? _selectedDriverType;
+  int? _selectedZoneId;
+  int? _selectedWarehouseId;
+  int? _selectedVehicleId;
+  List<ZoneModel> _zones = [];
+  List<WarehouseModel> _warehouses = [];
+  List<VehicleModel> _vehicles = [];
 
   @override
   void initState() {
     super.initState();
     _performSearch(); // Gọi API tìm kiếm lần đầu tiên (Lấy tất cả)
+    _loadZones();
+    _loadWarehouses();
+    _loadVehicles();
+  }
+
+  Future<void> _loadZones() async {
+    try {
+      final list = await ZoneService().getAllZones();
+      setState(() {
+        _zones = list;
+      });
+    } catch (e) {
+      print('Lỗi khi tải danh sách khu vực: $e');
+    }
+  }
+
+  Future<void> _loadWarehouses() async {
+    try {
+      final list = await WarehouseService().getAllWarehouses();
+      setState(() {
+        _warehouses = list;
+      });
+    } catch (e) {
+      print('Lỗi khi tải danh sách nhà kho: $e');
+    }
+  }
+
+  Future<void> _loadVehicles() async {
+    try {
+      final list = await VehicleService().getAllVehicles();
+      setState(() {
+        _vehicles = list;
+      });
+    } catch (e) {
+      print('Lỗi khi tải danh sách phương tiện: $e');
+    }
   }
 
   @override
@@ -178,6 +227,10 @@ class _UserListScreenState extends State<UserListScreen> {
           _selectedRoleId = userToEdit.roleName == 'Admin'
               ? 1
               : (userToEdit.roleName == 'WarehouseManager' ? 2 : 3);
+          _selectedDriverType = userToEdit.driverType;
+          _selectedZoneId = userToEdit.zoneId;
+          _selectedWarehouseId = userToEdit.currentWarehouseId;
+          _selectedVehicleId = userToEdit.currentVehicleId;
         } else {
           _nameController.clear();
           _emailController.clear();
@@ -188,6 +241,10 @@ class _UserListScreenState extends State<UserListScreen> {
           _passwordController.clear();
           _isActive = true;
           _selectedRoleId = 3;
+          _selectedDriverType = 'LAST_MILE';
+          _selectedZoneId = null;
+          _selectedWarehouseId = null;
+          _selectedVehicleId = null;
         }
 
         return StatefulBuilder(
@@ -333,6 +390,85 @@ class _UserListScreenState extends State<UserListScreen> {
                             ),
                           ],
                         ),
+                        if (_selectedRoleId == 3) ...[
+                          const SizedBox(height: 24),
+                          const Text(
+                            'Thông tin Tài xế (Driver Profile)',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          const Divider(),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: DropdownButtonFormField<String>(
+                                  value: _selectedDriverType,
+                                  items: const [
+                                    DropdownMenuItem(value: 'LINEHAUL', child: Text('Linehaul')),
+                                    DropdownMenuItem(value: 'LAST_MILE', child: Text('Last-Mile')),
+                                  ],
+                                  onChanged: (val) => setStateDialog(() => _selectedDriverType = val),
+                                  decoration: const InputDecoration(
+                                    labelText: 'Loại tài xế *',
+                                    prefixIcon: Icon(Icons.drive_eta_outlined),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: DropdownButtonFormField<int?>(
+                                  value: _selectedZoneId,
+                                  items: [
+                                    const DropdownMenuItem(value: null, child: Text('Không chọn khu vực')),
+                                    ..._zones.map((z) => DropdownMenuItem(value: z.id, child: Text(z.name))),
+                                  ],
+                                  onChanged: (val) => setStateDialog(() => _selectedZoneId = val),
+                                  decoration: const InputDecoration(
+                                    labelText: 'Khu vực hoạt động',
+                                    prefixIcon: Icon(Icons.map_outlined),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: DropdownButtonFormField<int?>(
+                                  value: _selectedWarehouseId,
+                                  items: [
+                                    const DropdownMenuItem(value: null, child: Text('Không chọn nhà kho')),
+                                    ..._warehouses.map((w) => DropdownMenuItem(value: w.warehouseId, child: Text(w.name))),
+                                  ],
+                                  onChanged: (val) => setStateDialog(() => _selectedWarehouseId = val),
+                                  decoration: const InputDecoration(
+                                    labelText: 'Nhà kho hiện tại',
+                                    prefixIcon: Icon(Icons.warehouse_outlined),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: DropdownButtonFormField<int?>(
+                                  value: _selectedVehicleId,
+                                  items: [
+                                    const DropdownMenuItem(value: null, child: Text('Không chọn phương tiện')),
+                                    ..._vehicles.map((v) => DropdownMenuItem(value: v.vehicleId, child: Text('${v.licensePlate ?? "N/A"} (${v.maxWeightKg} kg)'))),
+                                  ],
+                                  onChanged: (val) => setStateDialog(() => _selectedVehicleId = val),
+                                  decoration: const InputDecoration(
+                                    labelText: 'Phương tiện hiện tại',
+                                    prefixIcon: Icon(Icons.local_shipping_outlined),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                         if (userToEdit != null) ...[
                           const SizedBox(height: 24),
                           const Text(
@@ -377,30 +513,38 @@ class _UserListScreenState extends State<UserListScreen> {
                       Navigator.pop(context);
                       setState(() => _isLoading = true);
 
-                      bool success;
-                      if (userToEdit == null) {
-                        success = await _userService.createUser(
-                          _nameController.text.trim(),
-                          _emailController.text.trim(),
-                          _phoneController.text.trim(),
-                          _passwordController.text.trim(),
-                          _selectedRoleId,
-                          _idCardController.text.trim(),
-                          _originController.text.trim(),
-                          _addressController.text.trim(),
-                        );
-                      } else {
-                        success = await _userService.updateUser(
-                          userToEdit.userId!,
-                          _nameController.text.trim(),
-                          _phoneController.text.trim(),
-                          _selectedRoleId,
-                          _isActive,
-                          _idCardController.text.trim(),
-                          _originController.text.trim(),
-                          _addressController.text.trim(),
-                        );
-                      }
+                       bool success;
+                       if (userToEdit == null) {
+                         success = await _userService.createUser(
+                           _nameController.text.trim(),
+                           _emailController.text.trim(),
+                           _phoneController.text.trim(),
+                           _passwordController.text.trim(),
+                           _selectedRoleId,
+                           _idCardController.text.trim(),
+                           _originController.text.trim(),
+                           _addressController.text.trim(),
+                           driverType: _selectedRoleId == 3 ? _selectedDriverType : null,
+                           zoneId: _selectedRoleId == 3 ? _selectedZoneId : null,
+                           currentWarehouseId: _selectedRoleId == 3 ? _selectedWarehouseId : null,
+                           currentVehicleId: _selectedRoleId == 3 ? _selectedVehicleId : null,
+                         );
+                       } else {
+                         success = await _userService.updateUser(
+                           userToEdit.userId!,
+                           _nameController.text.trim(),
+                           _phoneController.text.trim(),
+                           _selectedRoleId,
+                           _isActive,
+                           _idCardController.text.trim(),
+                           _originController.text.trim(),
+                           _addressController.text.trim(),
+                           driverType: _selectedRoleId == 3 ? _selectedDriverType : null,
+                           zoneId: _selectedRoleId == 3 ? _selectedZoneId : null,
+                           currentWarehouseId: _selectedRoleId == 3 ? _selectedWarehouseId : null,
+                           currentVehicleId: _selectedRoleId == 3 ? _selectedVehicleId : null,
+                         );
+                       }
 
                       if (success) {
                         _showMessage(

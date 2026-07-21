@@ -10,6 +10,10 @@ class UserModel {
   final String? address;
   final String? origin;
   final int? roleId;
+  final String? driverType;
+  final int? zoneId;
+  final int? currentWarehouseId;
+  final int? currentVehicleId;
 
   UserModel({
     this.userId,
@@ -23,6 +27,10 @@ class UserModel {
     required this.roleName,
     required this.isActive,
     this.identificationNumber,
+    this.driverType,
+    this.zoneId,
+    this.currentWarehouseId,
+    this.currentVehicleId,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -38,6 +46,10 @@ class UserModel {
       origin: json['origin'] ?? '',
       address: json['address'] ?? '',
       roleId: _toInt(json['roleId']),
+      driverType: json['driverType'],
+      zoneId: _toInt(json['zoneId']),
+      currentWarehouseId: _toInt(json['currentWarehouseId']),
+      currentVehicleId: _toInt(json['currentVehicleId']),
     );
   }
 
@@ -62,6 +74,10 @@ class UserModel {
       'origin': origin,
       'address': address,
       'roleId': roleId,
+      'driverType': driverType,
+      'zoneId': zoneId,
+      'currentWarehouseId': currentWarehouseId,
+      'currentVehicleId': currentVehicleId,
     };
   }
 }

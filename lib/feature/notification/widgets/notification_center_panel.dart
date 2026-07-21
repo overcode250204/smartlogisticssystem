@@ -8,6 +8,8 @@ class NotificationCenterPanel extends StatelessWidget {
   final ValueNotifier<bool> isLoading;
   final Future<void> Function() onRefresh;
   final Future<void> Function(NotificationModel notification) onMarkAsRead;
+  final Future<void> Function(NotificationModel notification)?
+  onNotificationTap;
 
   const NotificationCenterPanel({
     super.key,
@@ -15,6 +17,7 @@ class NotificationCenterPanel extends StatelessWidget {
     required this.isLoading,
     required this.onRefresh,
     required this.onMarkAsRead,
+    this.onNotificationTap,
   });
 
   @override
@@ -89,7 +92,10 @@ class NotificationCenterPanel extends StatelessWidget {
                             final notification = items[index];
                             return _NotificationTile(
                               notification: notification,
-                              onTap: () => onMarkAsRead(notification),
+                              onTap: () async {
+                                await onMarkAsRead(notification);
+                                await onNotificationTap?.call(notification);
+                              },
                             );
                           },
                         ),

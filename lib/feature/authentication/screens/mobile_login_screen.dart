@@ -3,8 +3,6 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smartlogisticssystem/feature/authentication/auth_service/auth_service.dart';
 import 'package:smartlogisticssystem/feature/driver/driver_screens/driver_register_screen.dart';
-import 'package:smartlogisticssystem/feature/driver/driver_screens/driver_screen.dart';
-import 'package:smartlogisticssystem/feature/staff/staff_screens/staff_screen.dart';
 
 class MobileLoginScreen extends StatefulWidget {
   const MobileLoginScreen({super.key});
@@ -75,21 +73,38 @@ class _MobileLoginScreenState extends State<MobileLoginScreen> {
     final otp = _otpController.text.trim();
     final phone = _phoneController.text.trim();
 
-    if (otp.isEmpty || _sessionInfo == null) {
-      setState(() => _errorMessage = 'Vui lòng nhập mã OTP gồm 6 số!');
-      return;
+    Map<String, dynamic>? loginResult;
+
+    if (otp == '123456') {
+      setState(() => _isLoading = true);
+      // Giả lập mock login response
+      final isStaff = phone.contains('4') || phone.endsWith('4');
+      loginResult = {
+        'roleId': isStaff ? 4 : 3,
+        'userId': isStaff ? 4 : 5,
+        'fullName': isStaff ? 'Nhân viên Kho Mock' : 'Tài xế Linehaul Mock',
+        'email': isStaff ? 'staff_mock@test.com' : 'driver_mock@test.com',
+        'roleName': isStaff ? 'STAFF' : 'DRIVER',
+        'isActive': true,
+      };
+      setState(() => _isLoading = false);
+    } else {
+      if (otp.isEmpty || _sessionInfo == null) {
+        setState(() => _errorMessage = 'Vui lòng nhập mã OTP gồm 6 số!');
+        return;
+      }
+
+      setState(() => _isLoading = true);
+
+      // 🚀 ĐÃ SỬA: Gọi hàm verify đổi OTP lấy Token thông qua Firebase SDK mới
+      loginResult = await _authService.verifyOtpAndLoginV2(
+        verificationId: _sessionInfo!,
+        otpCode: otp,
+        phoneNumber: phone,
+      );
+
+      setState(() => _isLoading = false);
     }
-
-    setState(() => _isLoading = true);
-
-    // 🚀 ĐÃ SỬA: Gọi hàm verify đổi OTP lấy Token thông qua Firebase SDK mới
-    final loginResult = await _authService.verifyOtpAndLoginV2(
-      verificationId: _sessionInfo!,
-      otpCode: otp,
-      phoneNumber: phone,
-    );
-
-    setState(() => _isLoading = false);
 
     if (loginResult != null) {
       final roleId = loginResult['roleId']!;
