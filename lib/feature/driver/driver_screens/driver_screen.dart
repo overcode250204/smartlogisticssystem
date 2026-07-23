@@ -36,6 +36,7 @@ class _DriverScreenState extends State<DriverScreen> {
           final data = resBody['data'] as Map<String, dynamic>?;
           if (data != null) {
             setState(() {
+              print(data['driverType']?.toString());
               _driverType = data['driverType']?.toString() ?? '';
             });
           }
@@ -79,11 +80,7 @@ class _DriverScreenState extends State<DriverScreen> {
             onPressed: () async {
               await _authService.logout();
               if (context.mounted) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const LoginScreen()),
-                  (route) => false,
-                );
+                context.go('/mobile-login');
               }
             },
           ),

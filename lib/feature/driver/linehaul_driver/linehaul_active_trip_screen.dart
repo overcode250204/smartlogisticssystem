@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:dio/dio.dart';
 import 'package:smartlogisticssystem/core/networking.dart';
+import 'package:smartlogisticssystem/feature/live_tracking/services/live_tracking_service.dart';
 
 class LinehaulActiveTripScreen extends StatefulWidget {
   const LinehaulActiveTripScreen({super.key});
@@ -23,12 +26,138 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
   Position? _currentPosition;
   bool _useMockLocation = true; // Default to true for easy testing/grading
 
+  // Simulation State
+  List<LatLng> _routePoints = [];
+  LatLng? _simulatedPosition;
+  Timer? _simulationTimer;
+  bool _isSimulating = false;
+  final LiveTrackingService _liveTrackingService = LiveTrackingService();
+
   @override
   void initState() {
     print("init state");
     super.initState();
     _fetchActiveTrip();
     _determinePosition();
+  }
+
+  @override
+  void dispose() {
+    _simulationTimer?.cancel();
+    _liveTrackingService.disconnect();
+    super.dispose();
+  }
+
+  Future<void> _fetchOSRMRoute(double fromLat, double fromLng, double toLat, double toLng) async {
+    try {
+      final dio = Dio();
+      final url = 'http://router.project-osrm.org/route/v1/driving/$fromLng,$fromLat;$toLng,$toLat?overview=full&geometries=geojson';
+      final response = await dio.get(url);
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data;
+        final routes = data['routes'] as List<dynamic>?;
+        if (routes != null && routes.isNotEmpty) {
+          final geometry = routes[0]['geometry'] as Map<String, dynamic>?;
+          if (geometry != null) {
+            final coords = geometry['coordinates'] as List<dynamic>?;
+            if (coords != null) {
+              final points = coords.map((c) {
+                final lng = (c[0] as num).toDouble();
+                final lat = (c[1] as num).toDouble();
+                return LatLng(lat, lng);
+              }).toList();
+              setState(() {
+                _routePoints = points;
+              });
+              return;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print('Error fetching OSRM route: $e');
+    }
+
+    // Fallback: straight line with 10 intermediate points
+    final points = <LatLng>[];
+    for (int i = 0; i <= 10; i++) {
+      final t = i / 10.0;
+      final lat = fromLat + (toLat - fromLat) * t;
+      final lng = fromLng + (toLng - fromLng) * t;
+      points.add(LatLng(lat, lng));
+    }
+    setState(() {
+      _routePoints = points;
+    });
+  }
+
+  void _startSimulation(String tripCode) {
+    if (_routePoints.isEmpty) return;
+
+    _simulationTimer?.cancel();
+    setState(() {
+      _isSimulating = true;
+      _simulatedPosition = _routePoints.first;
+    });
+
+    final streamController = StreamController<Map<String, double>>.broadcast();
+    
+    _liveTrackingService.startDriverTracking(
+      tripCode: tripCode,
+      locationStream: streamController.stream,
+      pingInterval: const Duration(seconds: 1),
+    );
+
+    int currentTick = 0;
+    const totalTicks = 60; // 60 seconds = 1 minute
+
+    _simulationTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      currentTick++;
+      if (currentTick >= totalTicks || !mounted) {
+        timer.cancel();
+        _simulationTimer = null;
+        setState(() {
+          _isSimulating = false;
+          _simulatedPosition = _routePoints.last;
+        });
+        streamController.close();
+        _liveTrackingService.disconnect();
+        return;
+      }
+
+      final progress = currentTick / totalTicks;
+      final targetIndex = (progress * (_routePoints.length - 1)).round();
+      final currentPt = _routePoints[targetIndex];
+
+      setState(() {
+        _simulatedPosition = currentPt;
+      });
+
+      _mapController.move(currentPt, 12.5);
+
+      streamController.add({
+        'lat': currentPt.latitude,
+        'lng': currentPt.longitude,
+      });
+    });
+  }
+
+  Future<void> _setupSimulationForTrip(Map<String, dynamic> active) async {
+    final route = active['routeConfig'];
+    final fromWh = route?['fromWarehouse'];
+    final toWh = route?['toWarehouse'];
+    final double? fromLat = fromWh?['latitude'] != null ? (fromWh['latitude'] as num).toDouble() : null;
+    final double? fromLng = fromWh?['longitude'] != null ? (fromWh['longitude'] as num).toDouble() : null;
+    final double? toLat = toWh?['latitude'] != null ? (toWh['latitude'] as num).toDouble() : null;
+    final double? toLng = toWh?['longitude'] != null ? (toWh['longitude'] as num).toDouble() : null;
+
+    if (fromLat != null && fromLng != null && toLat != null && toLng != null) {
+      await _fetchOSRMRoute(fromLat, fromLng, toLat, toLng);
+      final tripCode = active['linehaulTripCode'] ?? '';
+      if (tripCode.isNotEmpty && !_isSimulating) {
+        _startSimulation(tripCode);
+      }
+    }
   }
 
   Future<void> _fetchActiveTrip() async {
@@ -62,6 +191,10 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               _mapController.move(LatLng(lat, lng), 12.5);
             });
+          }
+
+          if (active['status'] == 'EN_ROUTE' && _useMockLocation && !_isSimulating) {
+            _setupSimulationForTrip(active);
           }
         }
       } else {
@@ -124,7 +257,7 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
 
   Future<void> _handleDispatch() async {
     if (_activeTrip == null) return;
-    final tripId = _activeTrip!['id'];
+    final tripId = _activeTrip!['linehaulId'];
 
     double lat = 0.0;
     double lng = 0.0;
@@ -183,7 +316,7 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
 
   Future<void> _handleFinish() async {
     if (_activeTrip == null) return;
-    final tripId = (_activeTrip!['id'] as num).toInt();
+    final tripId = _activeTrip!['linehaulId'];
 
     double lat = 0.0;
     double lng = 0.0;
@@ -338,9 +471,10 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
         child: const Icon(Icons.location_on, color: Colors.redAccent, size: 30),
       ));
     }
-    if (_currentPosition != null) {
+    final activeLocation = _simulatedPosition ?? (_currentPosition != null ? LatLng(_currentPosition!.latitude, _currentPosition!.longitude) : null);
+    if (activeLocation != null) {
       markers.add(Marker(
-        point: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+        point: activeLocation,
         width: 40,
         height: 40,
         child: const Icon(Icons.navigation, color: Colors.green, size: 30),
@@ -383,7 +517,7 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
               FlutterMap(
                 mapController: _mapController,
                 options: MapOptions(
-                  initialCenter: LatLng(fromLat ?? 10.762, fromLng ?? 106.660),
+                  initialCenter: activeLocation ?? LatLng(fromLat ?? 10.762, fromLng ?? 106.660),
                   initialZoom: 12.0,
                 ),
                 children: [
@@ -391,6 +525,16 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
                     urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'com.overcode250204.smartlogisticssystem',
                   ),
+                  if (_routePoints.isNotEmpty)
+                    PolylineLayer(
+                      polylines: [
+                        Polyline(
+                          points: _routePoints,
+                          strokeWidth: 4,
+                          color: Colors.blueAccent,
+                        ),
+                      ],
+                    ),
                   MarkerLayer(markers: markers),
                 ],
               ),
@@ -407,9 +551,11 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
                         const Icon(Icons.gps_fixed, size: 16, color: Colors.green),
                         const SizedBox(width: 6),
                         Text(
-                          _currentPosition != null
-                              ? 'GPS: ${_currentPosition!.latitude.toStringAsFixed(4)}, ${_currentPosition!.longitude.toStringAsFixed(4)}'
-                              : 'Đang tìm tín hiệu GPS...',
+                          _isSimulating
+                              ? 'Giả lập GPS: ${_simulatedPosition!.latitude.toStringAsFixed(6)}, ${_simulatedPosition!.longitude.toStringAsFixed(6)}'
+                              : activeLocation != null
+                                  ? 'GPS: ${activeLocation.latitude.toStringAsFixed(6)}, ${activeLocation.longitude.toStringAsFixed(6)}'
+                                  : 'Đang tìm tín hiệu GPS...',
                           style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
                         ),
                       ],

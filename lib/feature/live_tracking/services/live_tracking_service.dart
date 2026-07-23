@@ -39,6 +39,7 @@ class ActiveVehicleInfo {
 class LiveTrackingService {
   StompClient? _client;
   Timer? _pingTimer;
+  StreamSubscription? _locationSubscription;
   bool get isConnected => _client?.connected ?? false;
 
   // For Admin: subscribe to real-time updates of all active vehicles
@@ -82,10 +83,11 @@ class LiveTrackingService {
     _client?.activate();
   }
 
-  // For Driver: start sending location ping every 30s
+  // For Driver: start sending location ping periodically
   void startDriverTracking({
     required String tripCode,
     required Stream<Map<String, double>> locationStream,
+    Duration pingInterval = const Duration(seconds: 30),
   }) {
     if (isConnected) disconnect();
 
@@ -100,13 +102,26 @@ class LiveTrackingService {
           double currentLng = 106.660;
 
           // Listen to the real location stream if available
-          final subscription = locationStream.listen((coords) {
+          _locationSubscription = locationStream.listen((coords) {
             currentLat = coords['lat'] ?? currentLat;
             currentLng = coords['lng'] ?? currentLng;
+
+            // Immediately send coordinate to server for fast updates in simulation
+            if (pingInterval.inSeconds < 10 && isConnected) {
+              final payload = {
+                'trip_code': tripCode,
+                'lat': currentLat,
+                'lng': currentLng,
+              };
+              _client?.send(
+                destination: '/app/track-location',
+                body: jsonEncode(payload),
+              );
+            }
           });
 
-          // Periodically push location updates to BE every 30s
-          _pingTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+          // Periodically push location updates to BE
+          _pingTimer = Timer.periodic(pingInterval, (timer) {
             if (isConnected) {
               final payload = {
                 'trip_code': tripCode,
@@ -152,6 +167,8 @@ class LiveTrackingService {
   }
 
   void disconnect() {
+    _locationSubscription?.cancel();
+    _locationSubscription = null;
     _pingTimer?.cancel();
     _pingTimer = null;
     _client?.deactivate();

@@ -91,7 +91,7 @@ class _LinehaulProfileScreenState extends State<LinehaulProfileScreen> {
     );
     if (confirm == true && mounted) {
       await AuthService().logout();
-      if (mounted) context.go('/login');
+      if (mounted) context.go('/mobile-login');
     }
   }
 

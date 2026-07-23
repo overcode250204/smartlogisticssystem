@@ -46,24 +46,24 @@ class _MobileLoginScreenState extends State<MobileLoginScreen> {
     });
 
     // 🚀 ĐÃ SỬA: Gọi hàm SDK mới để kích hoạt gửi SMS thật về máy
-    // await _authService.sendOtpToRealPhone(
-    //   phoneNumber: phone,
-    //   onCodeSent: (verificationId) {
-    //     // Callback kích hoạt khi Google gửi tin nhắn thành công
+    await _authService.sendOtpToRealPhone(
+      phoneNumber: phone,
+      onCodeSent: (verificationId) {
+        // Callback kích hoạt khi Google gửi tin nhắn thành công
         setState(() {
           _isLoading = false;
           _sessionInfo = "true";
           _isOtpSent = true;
         });
-    //   },
-    //   onFailed: (errorMsg) {
-    //     // Callback kích hoạt khi xảy ra lỗi (Sai định dạng, reCAPTCHA chặn...)
-    //     setState(() {
-    //       _isLoading = false;
-    //       _errorMessage = errorMsg;
-    //     });
-    //   },
-    // );
+      },
+      onFailed: (errorMsg) {
+        // Callback kích hoạt khi xảy ra lỗi (Sai định dạng, reCAPTCHA chặn...)
+        setState(() {
+          _isLoading = false;
+          _errorMessage = errorMsg;
+        });
+      },
+    );
   }
 
   // =================================================================
@@ -81,7 +81,7 @@ class _MobileLoginScreenState extends State<MobileLoginScreen> {
       final isStaff = phone.contains('4') || phone.endsWith('4');
       loginResult = {
         'roleId': isStaff ? 4 : 3,
-        'userId': isStaff ? 4 : 5,
+        'userId': isStaff ? 4 : 9,
         'fullName': isStaff ? 'Nhân viên Kho Mock' : 'Tài xế Linehaul Mock',
         'email': isStaff ? 'staff_mock@test.com' : 'driver_mock@test.com',
         'roleName': isStaff ? 'STAFF' : 'DRIVER',
