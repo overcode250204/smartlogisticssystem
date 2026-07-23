@@ -25,6 +25,7 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
 
   @override
   void initState() {
+    print("init state");
     super.initState();
     _fetchActiveTrip();
     _determinePosition();
@@ -85,12 +86,13 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
     LocationPermission permission;
 
     try {
+      print("Enable GPS");
       serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         print('Location services are disabled.');
         return;
       }
-
+      print("Check GPS permission");
       permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
@@ -104,13 +106,17 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
         print('Location permissions are permanently denied.');
         return;
       }
-
+      print("Get current GPS location");
       final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+       locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        timeLimit: Duration(seconds: 10),
+       ),
       );
       setState(() {
         _currentPosition = position;
       });
+      print("Final handle GPS");
     } catch (e) {
       print('Error getting GPS location: $e');
     }
@@ -177,7 +183,7 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
 
   Future<void> _handleFinish() async {
     if (_activeTrip == null) return;
-    final tripId = _activeTrip!['id'];
+    final tripId = (_activeTrip!['id'] as num).toInt();
 
     double lat = 0.0;
     double lng = 0.0;
@@ -202,6 +208,7 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
     setState(() => _isLoading = true);
 
     try {
+      print("finish trip");
       final response = await _apiClient.post(
         'linehaul-trip/$tripId/finish',
         data: {
