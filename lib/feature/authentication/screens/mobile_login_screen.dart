@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:smartlogisticssystem/core/auth_mock_config.dart';
 import 'package:smartlogisticssystem/feature/authentication/auth_service/auth_service.dart';
 import 'package:smartlogisticssystem/feature/driver/driver_screens/driver_register_screen.dart';
 
@@ -35,7 +36,8 @@ class _MobileLoginScreenState extends State<MobileLoginScreen> {
   // =================================================================
   Future<void> _handleSendOtp() async {
     final phone = _phoneController.text.trim();
-    if (phone.isEmpty || phone.length < 10) {
+    if (phone.isEmpty ||
+        (!AuthMockConfig.phoneOtpEnabled && phone.length < 10)) {
       setState(() => _errorMessage = 'Vui lòng nhập số điện thoại hợp lệ!');
       return;
     }
@@ -46,6 +48,15 @@ class _MobileLoginScreenState extends State<MobileLoginScreen> {
     });
 
     // 🚀 ĐÃ SỬA: Gọi hàm SDK mới để kích hoạt gửi SMS thật về máy
+    if (AuthMockConfig.phoneOtpEnabled) {
+      setState(() {
+        _isLoading = false;
+        _sessionInfo = AuthMockConfig.mockVerificationId;
+        _isOtpSent = true;
+      });
+      return;
+    }
+
     await _authService.sendOtpToRealPhone(
       phoneNumber: phone,
       onCodeSent: (verificationId) {
@@ -75,16 +86,17 @@ class _MobileLoginScreenState extends State<MobileLoginScreen> {
     
     Map<String, dynamic>? loginResult;
 
-    if (otp == '123456') {
+    if (AuthMockConfig.phoneOtpEnabled &&
+        otp == AuthMockConfig.phoneOtpCode) {
       setState(() => _isLoading = true);
+      final isStaff = AuthMockConfig.isStaff;
       // Giả lập mock login response
-      final isStaff = phone.contains('4') || phone.endsWith('4');
       loginResult = {
-        'roleId': isStaff ? 4 : 3,
-        'userId': isStaff ? 4 : 9,
+        'roleId': AuthMockConfig.roleId,
+        'userId': AuthMockConfig.userId,
         'fullName': isStaff ? 'Nhân viên Kho Mock' : 'Tài xế Linehaul Mock',
-        'email': isStaff ? 'staff_mock@test.com' : 'driver_mock@test.com',
-        'roleName': isStaff ? 'STAFF' : 'DRIVER',
+        'email': AuthMockConfig.email,
+        'roleName': AuthMockConfig.roleName,
         'isActive': true,
       };
       setState(() => _isLoading = false);

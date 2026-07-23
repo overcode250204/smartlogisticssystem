@@ -1,33 +1,44 @@
 // File: lib/core/networking.dart
 import 'package:flutter/foundation.dart'
-    show TargetPlatform, defaultTargetPlatform, kIsWeb;
+    show TargetPlatform, debugPrint, defaultTargetPlatform, kDebugMode, kIsWeb;
 import 'package:dio/dio.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiClient {
   late final Dio _dio;
 
   static String getBaseUrl() {
-    if (kIsWeb) {
-      print('clientweb');
-      return 'http://127.0.0.1:8080/api/';
-    }
-
-    if (defaultTargetPlatform == TargetPlatform.windows ||
-        defaultTargetPlatform == TargetPlatform.macOS ||
-        defaultTargetPlatform == TargetPlatform.linux) {
-      print('WindowMacOSLinux');
-      return 'http://127.0.0.1:8080/api/';
-    }
-
     if (defaultTargetPlatform == TargetPlatform.android ||
         defaultTargetPlatform == TargetPlatform.iOS) {
-      print('clientAndroidIOS');
-      return 'http://10.0.2.2:8080/api/';
+      return _normalizeBaseUrl(
+        _configuredBaseUrl('MOBILE_BASE_URL') ?? 'http://10.0.2.2:8080/api/',
+      );
     }
 
-    print('DefaultDevice');
+    if (kIsWeb ||
+        defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.macOS ||
+        defaultTargetPlatform == TargetPlatform.linux) {
+      return _normalizeBaseUrl(
+        _configuredBaseUrl('BASE_URL') ?? 'http://127.0.0.1:8080/api/',
+      );
+    }
+
     return 'http://10.0.2.2:8080/api/';
+  }
+
+  static String? _configuredBaseUrl(String key) {
+    try {
+      final value = dotenv.env[key]?.trim();
+      return value == null || value.isEmpty ? null : value;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static String _normalizeBaseUrl(String baseUrl) {
+    return baseUrl.endsWith('/') ? baseUrl : '$baseUrl/';
   }
 
   static String getWebSocketUrl() {
@@ -67,6 +78,17 @@ class ApiClient {
 
           handler.next(options);
         },
+        onError: (error, handler) {
+          if (kDebugMode) {
+            debugPrint(
+              'API request failed: ${error.requestOptions.method} '
+              '${error.requestOptions.uri} '
+              'status=${error.response?.statusCode} '
+              'message=${error.message}',
+            );
+          }
+          handler.next(error);
+        },
       ),
     );
   }
@@ -85,12 +107,24 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
     Options? options,
   }) async {
+    final requestOptions = _withLongRunningTimeoutForAi(path, options);
     return _dio.post(
       path,
       data: data,
       queryParameters: queryParameters,
-      options: options,
+      options: requestOptions,
     );
+  }
+
+  Options? _withLongRunningTimeoutForAi(String path, Options? options) {
+    if (path != 'admin/ai-assistant/chat') {
+      return options;
+    }
+
+    final mergedOptions = options ?? Options();
+    mergedOptions.receiveTimeout = const Duration(seconds: 90);
+    mergedOptions.sendTimeout = const Duration(seconds: 20);
+    return mergedOptions;
   }
 
   Future<Response<dynamic>> put(

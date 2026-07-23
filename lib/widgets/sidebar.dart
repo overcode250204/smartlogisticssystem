@@ -128,6 +128,12 @@ class Sidebar extends StatelessWidget {
       icon: Icons.radar,
       allowedRoleIds: {AuthSession.adminRoleId},
     ),
+    SidebarItem(
+      label: 'Trợ lý AI',
+      route: '/admin-ai-assistant',
+      icon: Icons.psychology_alt_outlined,
+      allowedRoleIds: {AuthSession.adminRoleId},
+    ),
   ];
 
   @override
