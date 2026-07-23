@@ -18,6 +18,16 @@ class AuthSession {
     return prefs.getInt('userId');
   }
 
+  static Future<int?> getDriverId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('driverId');
+  }
+
+  static Future<void> setDriverId(int driverId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('driverId', driverId);
+  }
+
   static Future<SessionUser?> getCurrentUser() async {
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getInt('userId');

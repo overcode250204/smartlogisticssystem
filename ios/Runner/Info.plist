@@ -68,5 +68,7 @@
 	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Ứng dụng cần quyền truy cập Camera để quét giấy tờ lái xe bằng AI.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Ứng dụng cần vị trí của bạn để xác nhận đã đến điểm giao hàng.</string>
 </dict>
 </plist>
