@@ -6,7 +6,6 @@ import 'package:smartlogisticssystem/feature/authentication/screens/login_screen
 import 'package:smartlogisticssystem/feature/authentication/screens/mobile_login_screen.dart';
 import 'package:smartlogisticssystem/feature/authentication/screens/splash_screen.dart';
 import 'package:smartlogisticssystem/feature/driver/driver_screens/driver_screen.dart';
-import 'package:smartlogisticssystem/feature/driver/linehaul_driver/linehaul_driver_navigation.dart';
 import 'package:smartlogisticssystem/feature/staff/staff_screens/staff_screen.dart';
 import 'package:smartlogisticssystem/feature/staff/staff_screens/pallet_task_detail_page.dart';
 import 'package:smartlogisticssystem/feature/staff/staff_screens/pallet_task_list_page.dart';
@@ -45,6 +44,7 @@ import 'package:smartlogisticssystem/feature/customer/screens/customer_order_det
 import 'package:smartlogisticssystem/feature/customer/screens/customer_tracking_screen.dart';
 import 'package:smartlogisticssystem/feature/customer/screens/customer_profile_screen.dart';
 import 'package:smartlogisticssystem/feature/live_tracking/screens/live_tracking_map_page.dart';
+import 'package:smartlogisticssystem/feature/admin_ai/screens/admin_ai_assistant_page.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
@@ -354,6 +354,19 @@ final appRouter = GoRouter(
           pageBuilder: (context, state) =>
               const NoTransitionPage(child: LiveTrackingMapPage()),
         ),
+        GoRoute(
+          path: '/admin-ai-assistant',
+          redirect: (context, state) async {
+            final prefs = await SharedPreferences.getInstance();
+            final roleId = prefs.getInt('roleId');
+            if (roleId != 1) {
+              return '/dashboard';
+            }
+            return null;
+          },
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: AdminAiAssistantPage()),
+        ),
       ],
     ),
 
@@ -594,6 +607,7 @@ String _titleForPath(String path) {
     '/categories' => 'Danh mục',
     '/exception-reasons' => 'Lý do ngoại lệ',
     '/live-tracking' => 'Giám sát live',
+    '/admin-ai-assistant' => 'Trợ lý vận hành AI',
     '/users' => 'Quản lý nhân sự',
     '/zones' => 'Quản lý khu vực',
     '/vehicles' => 'Quản lý phương tiện',
