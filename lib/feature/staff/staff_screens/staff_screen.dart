@@ -70,15 +70,18 @@ class _StaffScreenState extends State<StaffScreen> {
 
   void _handleRealtimeNotification(NotificationModel notification) {
     if (!mounted) return;
-    _notificationsNotifier.value = [
-      notification,
-      ..._notificationsNotifier.value.where(
-        (item) => item.id != notification.id,
-      ),
-    ];
-    setState(() {
-      if (!notification.isRead) _notificationCount += 1;
-    });
+    // Danh sách chỉ chứa thông báo chưa đọc -> bỏ qua nếu đã đọc.
+    if (!notification.isRead) {
+      _notificationsNotifier.value = [
+        notification,
+        ..._notificationsNotifier.value.where(
+          (item) => item.id != notification.id,
+        ),
+      ];
+      setState(() {
+        _notificationCount += 1;
+      });
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('${notification.title}: ${notification.message}'),
@@ -94,15 +97,14 @@ class _StaffScreenState extends State<StaffScreen> {
 
     _notificationsLoadingNotifier.value = true;
     try {
-      final notifications = await _notificationApiService.getNotifications(
+      // Chỉ lấy thông báo chưa đọc từ backend (nguồn dữ liệu chính).
+      final notifications = await _notificationApiService.getUnreadNotifications(
         userId,
       );
       _notificationsNotifier.value = notifications;
       if (mounted) {
         setState(() {
-          _notificationCount = notifications
-              .where((notification) => !notification.isRead)
-              .length;
+          _notificationCount = notifications.length;
         });
       }
     } catch (error) {
@@ -113,22 +115,24 @@ class _StaffScreenState extends State<StaffScreen> {
   }
 
   Future<void> _markNotificationAsRead(NotificationModel notification) async {
-    if (notification.isRead) return;
-
-    await _notificationApiService.markAsRead(notification.id);
-    _notificationsNotifier.value = _notificationsNotifier.value
-        .map(
-          (item) => item.id == notification.id
-              ? item.copyWith(isRead: true, readAt: DateTime.now())
-              : item,
-        )
-        .toList();
-
-    if (mounted) {
-      setState(() {
-        if (_notificationCount > 0) _notificationCount -= 1;
-      });
+    try {
+      await _notificationApiService.markAsRead(notification.id);
+    } catch (error) {
+      debugPrint('Unable to mark notification as read: $error');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Không thể đánh dấu đã đọc. Vui lòng thử lại.'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+      // Ném lại để dừng luồng: không điều hướng, không cập nhật trạng thái giả.
+      rethrow;
     }
+
+    // Thành công -> refetch để danh sách chưa đọc và badge phản ánh đúng backend.
+    await _loadNotifications();
   }
 
   Future<void> _handleNotificationTap(NotificationModel notification) async {

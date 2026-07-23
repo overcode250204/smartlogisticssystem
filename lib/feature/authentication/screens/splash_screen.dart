@@ -52,7 +52,9 @@ class _SplashScreenState extends State<SplashScreen> {
 
   void _navigateToLoginBasedOnDevice() {
     if (_isMobile) {
-      context.go('/mobile-login');
+      // Trên mobile có 2 luồng đăng nhập (Nhân viên: email/mật khẩu,
+      // Tài xế: SĐT/OTP) nên cho người dùng chọn vai trò trước.
+      context.go('/role-select');
     } else {
       context.go('/login');
     }

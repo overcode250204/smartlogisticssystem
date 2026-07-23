@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smartlogisticssystem/core/auth_session.dart';
 import 'package:smartlogisticssystem/feature/authentication/screens/login_screen.dart';
 import 'package:smartlogisticssystem/feature/authentication/screens/mobile_login_screen.dart';
+import 'package:smartlogisticssystem/feature/authentication/screens/role_select_screen.dart';
 import 'package:smartlogisticssystem/feature/authentication/screens/splash_screen.dart';
 import 'package:smartlogisticssystem/feature/driver/driver_screens/driver_screen.dart';
 import 'package:smartlogisticssystem/feature/staff/staff_screens/staff_screen.dart';
@@ -63,6 +64,11 @@ final appRouter = GoRouter(
       path: '/mobile-login',
       pageBuilder: (context, state) =>
           const NoTransitionPage(child: MobileLoginScreen()),
+    ),
+    GoRoute(
+      path: '/role-select',
+      pageBuilder: (context, state) =>
+          const NoTransitionPage(child: RoleSelectScreen()),
     ),
 
     GoRoute(

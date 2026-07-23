@@ -35,6 +35,14 @@ class _EditLocalTripDialogState extends State<EditLocalTripDialog> {
     _selectedDriverId = widget.trip.driver?.driverId;
   }
 
+  // Xe/tài xế đang gán cho chuyến có thể không nằm trong danh sách khả dụng
+  // -> phải bỏ giá trị đó, nếu không DropdownButton sẽ assert.
+  int? _validVehicleId(int? id) =>
+      widget.allVehicles.any((v) => v.vehicleId == id) ? id : null;
+
+  int? _validDriverId(int? id) =>
+      widget.allDrivers.any((d) => d.driverId == id) ? id : null;
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -54,7 +62,7 @@ class _EditLocalTripDialogState extends State<EditLocalTripDialog> {
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textSecondary)),
               const SizedBox(height: 6),
               DropdownButtonFormField<int>(
-                value: _selectedVehicleId,
+                value: _validVehicleId(_selectedVehicleId),
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
                   contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -83,7 +91,7 @@ class _EditLocalTripDialogState extends State<EditLocalTripDialog> {
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textSecondary)),
               const SizedBox(height: 6),
               DropdownButtonFormField<int>(
-                value: _selectedDriverId,
+                value: _validDriverId(_selectedDriverId),
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
                   contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),

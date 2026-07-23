@@ -164,6 +164,11 @@ class _MobileLoginScreenState extends State<MobileLoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'Chọn lại vai trò',
+          onPressed: () => context.go('/role-select'),
+        ),
         title: const Text('Smart Logistics Mobile'),
         centerTitle: true,
       ),
