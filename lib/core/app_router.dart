@@ -6,7 +6,10 @@ import 'package:smartlogisticssystem/feature/authentication/screens/login_screen
 import 'package:smartlogisticssystem/feature/authentication/screens/mobile_login_screen.dart';
 import 'package:smartlogisticssystem/feature/authentication/screens/role_select_screen.dart';
 import 'package:smartlogisticssystem/feature/authentication/screens/splash_screen.dart';
+import 'package:smartlogisticssystem/data/model/local_trip_response_model.dart';
 import 'package:smartlogisticssystem/feature/driver/driver_screens/driver_screen.dart';
+import 'package:smartlogisticssystem/feature/driver/local_trip/screens/trip_detail_screen.dart';
+import 'package:smartlogisticssystem/feature/driver/local_trip/screens/trip_list_screen.dart';
 import 'package:smartlogisticssystem/feature/staff/staff_screens/staff_screen.dart';
 import 'package:smartlogisticssystem/feature/staff/staff_screens/pallet_task_detail_page.dart';
 import 'package:smartlogisticssystem/feature/staff/staff_screens/pallet_task_list_page.dart';
@@ -75,6 +78,30 @@ final appRouter = GoRouter(
       path: '/driver',
       pageBuilder: (context, state) =>
           const NoTransitionPage(child: DriverScreen()),
+    ),
+    GoRoute(
+      path: '/driver/local-trips',
+      redirect: (context, state) async {
+        if (!await AuthSession.isDriver()) return '/login';
+        return null;
+      },
+      pageBuilder: (context, state) =>
+          const NoTransitionPage(child: TripListScreen()),
+      routes: [
+        GoRoute(
+          path: ':tripId',
+          pageBuilder: (context, state) {
+            final tripId = int.parse(state.pathParameters['tripId']!);
+            final extra = state.extra;
+            return NoTransitionPage(
+              child: TripDetailScreen(
+                tripId: tripId,
+                initialTrip: extra is LocalTripResponse ? extra : null,
+              ),
+            );
+          },
+        ),
+      ],
     ),
     GoRoute(
       path: '/staff',
