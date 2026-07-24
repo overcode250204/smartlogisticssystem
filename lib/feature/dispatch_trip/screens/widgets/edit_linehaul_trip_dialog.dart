@@ -44,6 +44,14 @@ class _EditLinehaulTripDialogState extends State<EditLinehaulTripDialog> {
     ).driver?.driverId;
   }
 
+  // Xe/tài xế đang gán cho chuyến có thể không nằm trong danh sách khả dụng
+  // -> phải bỏ giá trị đó, nếu không DropdownButton sẽ assert.
+  int? _validVehicleId(int? id) =>
+      widget.allVehicles.any((v) => v.vehicleId == id) ? id : null;
+
+  int? _validDriverId(int? id) =>
+      widget.allDrivers.any((d) => d.driverId == id) ? id : null;
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -63,7 +71,7 @@ class _EditLinehaulTripDialogState extends State<EditLinehaulTripDialog> {
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textSecondary)),
               const SizedBox(height: 6),
               DropdownButtonFormField<int>(
-                value: _selectedVehicleId,
+                value: _validVehicleId(_selectedVehicleId),
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
                   contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -92,7 +100,7 @@ class _EditLinehaulTripDialogState extends State<EditLinehaulTripDialog> {
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textSecondary)),
               const SizedBox(height: 6),
               DropdownButtonFormField<int>(
-                value: _selectedMainDriverId,
+                value: _validDriverId(_selectedMainDriverId),
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
                   contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -103,12 +111,15 @@ class _EditLinehaulTripDialogState extends State<EditLinehaulTripDialog> {
                     value: null,
                     child: Text('Không chọn tài xế / Bỏ chọn'),
                   ),
-                  ...widget.allDrivers.map((d) {
-                    return DropdownMenuItem<int>(
-                      value: d.driverId,
-                      child: Text('${d.name ?? "N/A"} - ${d.phone ?? ""}'),
-                    );
-                  })
+                  // Loại tài xế đã chọn làm phụ để không thể chọn trùng.
+                  ...widget.allDrivers
+                      .where((d) => d.driverId != _selectedAssistantDriverId)
+                      .map((d) {
+                        return DropdownMenuItem<int>(
+                          value: d.driverId,
+                          child: Text('${d.name ?? "N/A"} - ${d.phone ?? ""}'),
+                        );
+                      })
                 ],
                 onChanged: (val) {
                   setState(() {
@@ -121,7 +132,7 @@ class _EditLinehaulTripDialogState extends State<EditLinehaulTripDialog> {
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textSecondary)),
               const SizedBox(height: 6),
               DropdownButtonFormField<int>(
-                value: _selectedAssistantDriverId,
+                value: _validDriverId(_selectedAssistantDriverId),
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
                   contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -132,7 +143,10 @@ class _EditLinehaulTripDialogState extends State<EditLinehaulTripDialog> {
                     value: null,
                     child: Text('Không có tài xế phụ'),
                   ),
-                  ...widget.allDrivers.map((d) {
+                  // Loại tài xế đã chọn làm chính để không thể chọn trùng.
+                  ...widget.allDrivers
+                      .where((d) => d.driverId != _selectedMainDriverId)
+                      .map((d) {
                     return DropdownMenuItem<int>(
                       value: d.driverId,
                       child: Text('${d.name ?? "N/A"} - ${d.phone ?? ""}'),

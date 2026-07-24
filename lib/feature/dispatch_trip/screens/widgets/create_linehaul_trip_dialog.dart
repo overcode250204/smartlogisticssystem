@@ -30,6 +30,17 @@ class _CreateLinehaulTripDialogState extends State<CreateLinehaulTripDialog> {
   int? _selectedAssistantDriverId;
   bool _isSubmitting = false;
 
+  // Chỉ giữ lại id nếu nó thực sự có trong danh sách item của dropdown,
+  // nếu không DropdownButton sẽ assert khi build.
+  int? _validRouteId(int? id) =>
+      widget.allRouteConfigs.any((r) => r.routeId == id) ? id : null;
+
+  int? _validVehicleId(int? id) =>
+      widget.allVehicles.any((v) => v.vehicleId == id) ? id : null;
+
+  int? _validDriverId(int? id) =>
+      widget.allDrivers.any((d) => d.driverId == id) ? id : null;
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -49,7 +60,7 @@ class _CreateLinehaulTripDialogState extends State<CreateLinehaulTripDialog> {
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textSecondary)),
               const SizedBox(height: 6),
               DropdownButtonFormField<int>(
-                value: _selectedRouteId,
+                value: _validRouteId(_selectedRouteId),
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
                   contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -72,9 +83,8 @@ class _CreateLinehaulTripDialogState extends State<CreateLinehaulTripDialog> {
                     _selectedRouteId = val;
                     if (val != null) {
                       final selectedRoute = widget.allRouteConfigs.firstWhere((element) => element.routeId == val);
-                      if (selectedRoute.defaultVehicle != null) {
-                        _selectedVehicleId = selectedRoute.defaultVehicle!.vehicleId;
-                      }
+                      // Xe mặc định của tuyến có thể không nằm trong danh sách xe khả dụng
+                      _selectedVehicleId = _validVehicleId(selectedRoute.defaultVehicle?.vehicleId) ?? _selectedVehicleId;
                     }
                   });
                 },
@@ -84,7 +94,7 @@ class _CreateLinehaulTripDialogState extends State<CreateLinehaulTripDialog> {
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textSecondary)),
               const SizedBox(height: 6),
               DropdownButtonFormField<int>(
-                value: _selectedVehicleId,
+                value: _validVehicleId(_selectedVehicleId),
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
                   contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -113,7 +123,7 @@ class _CreateLinehaulTripDialogState extends State<CreateLinehaulTripDialog> {
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textSecondary)),
               const SizedBox(height: 6),
               DropdownButtonFormField<int>(
-                value: _selectedMainDriverId,
+                value: _validDriverId(_selectedMainDriverId),
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
                   contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -124,12 +134,15 @@ class _CreateLinehaulTripDialogState extends State<CreateLinehaulTripDialog> {
                     value: null,
                     child: Text('Không chọn tài xế chính'),
                   ),
-                  ...widget.allDrivers.map((d) {
-                    return DropdownMenuItem<int>(
-                      value: d.driverId,
-                      child: Text('${d.name ?? "N/A"} - ${d.phone ?? ""}'),
-                    );
-                  })
+                  // Loại tài xế đã chọn làm phụ để không thể chọn trùng.
+                  ...widget.allDrivers
+                      .where((d) => d.driverId != _selectedAssistantDriverId)
+                      .map((d) {
+                        return DropdownMenuItem<int>(
+                          value: d.driverId,
+                          child: Text('${d.name ?? "N/A"} - ${d.phone ?? ""}'),
+                        );
+                      })
                 ],
                 onChanged: (val) {
                   setState(() {
@@ -142,7 +155,7 @@ class _CreateLinehaulTripDialogState extends State<CreateLinehaulTripDialog> {
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textSecondary)),
               const SizedBox(height: 6),
               DropdownButtonFormField<int>(
-                value: _selectedAssistantDriverId,
+                value: _validDriverId(_selectedAssistantDriverId),
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
                   contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -153,12 +166,15 @@ class _CreateLinehaulTripDialogState extends State<CreateLinehaulTripDialog> {
                     value: null,
                     child: Text('Không có tài xế phụ'),
                   ),
-                  ...widget.allDrivers.map((d) {
-                    return DropdownMenuItem<int>(
-                      value: d.driverId,
-                      child: Text('${d.name ?? "N/A"} - ${d.phone ?? ""}'),
-                    );
-                  })
+                  // Loại tài xế đã chọn làm chính để không thể chọn trùng.
+                  ...widget.allDrivers
+                      .where((d) => d.driverId != _selectedMainDriverId)
+                      .map((d) {
+                        return DropdownMenuItem<int>(
+                          value: d.driverId,
+                          child: Text('${d.name ?? "N/A"} - ${d.phone ?? ""}'),
+                        );
+                      })
                 ],
                 validator: (value) {
                   if (value != null) {
