@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smartlogisticssystem/core/networking.dart';
 import 'package:smartlogisticssystem/feature/authentication/auth_service/auth_service.dart';
@@ -35,6 +36,7 @@ class _DriverScreenState extends State<DriverScreen> {
           final data = resBody['data'] as Map<String, dynamic>?;
           if (data != null) {
             setState(() {
+              print(data['driverType']?.toString());
               _driverType = data['driverType']?.toString() ?? '';
             });
           }
@@ -78,11 +80,7 @@ class _DriverScreenState extends State<DriverScreen> {
             onPressed: () async {
               await _authService.logout();
               if (context.mounted) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const LoginScreen()),
-                  (route) => false,
-                );
+                context.go('/mobile-login');
               }
             },
           ),
@@ -98,6 +96,12 @@ class _DriverScreenState extends State<DriverScreen> {
               'Màn hình Map Tracking GPS của Tài xế\n(Loại tài xế: $_driverType)',
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 18, color: Colors.black54),
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: () => context.push('/driver/local-trips'),
+              icon: const Icon(Icons.local_shipping),
+              label: const Text('Đơn giao hàng nội thành'),
             ),
           ],
         ),

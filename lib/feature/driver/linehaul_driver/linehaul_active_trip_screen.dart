@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:dio/dio.dart';
 import 'package:smartlogisticssystem/core/networking.dart';
+import 'package:smartlogisticssystem/feature/live_tracking/services/live_tracking_service.dart';
 
 class LinehaulActiveTripScreen extends StatefulWidget {
   const LinehaulActiveTripScreen({super.key});
@@ -21,13 +24,153 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
 
   // GPS state
   Position? _currentPosition;
-  bool _useMockLocation = true; // Default to true for easy testing/grading
+  StreamSubscription<Position>? _gpsSubscription;
+  StreamController<Map<String, double>>? _locationStreamController;
+  Timer? _debounceTimer;
+
+  // Route State
+  List<LatLng> _routePoints = [];
+  final LiveTrackingService _liveTrackingService = LiveTrackingService();
 
   @override
   void initState() {
+    print("init state");
     super.initState();
     _fetchActiveTrip();
     _determinePosition();
+  }
+
+  @override
+  void dispose() {
+    _stopGPSTracking();
+    super.dispose();
+  }
+
+  Future<void> _fetchOSRMRoute(double fromLat, double fromLng, double toLat, double toLng) async {
+    try {
+      final dio = Dio();
+      final url = 'http://router.project-osrm.org/route/v1/driving/$fromLng,$fromLat;$toLng,$toLat?overview=full&geometries=geojson';
+      final response = await dio.get(url);
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data;
+        final routes = data['routes'] as List<dynamic>?;
+        if (routes != null && routes.isNotEmpty) {
+          final geometry = routes[0]['geometry'] as Map<String, dynamic>?;
+          if (geometry != null) {
+            final coords = geometry['coordinates'] as List<dynamic>?;
+            if (coords != null) {
+              final points = coords.map((c) {
+                final lng = (c[0] as num).toDouble();
+                final lat = (c[1] as num).toDouble();
+                return LatLng(lat, lng);
+              }).toList();
+              setState(() {
+                _routePoints = points;
+              });
+              return;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print('Error fetching OSRM route: $e');
+    }
+
+    // Fallback: straight line with 10 intermediate points
+    final points = <LatLng>[];
+    for (int i = 0; i <= 10; i++) {
+      final t = i / 10.0;
+      final lat = fromLat + (toLat - fromLat) * t;
+      final lng = fromLng + (toLng - fromLng) * t;
+      points.add(LatLng(lat, lng));
+    }
+    setState(() {
+      _routePoints = points;
+    });
+  }
+
+  Future<bool> _checkLocationPermission() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    try {
+      serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        debugPrint('Location services are disabled.');
+        return false;
+      }
+
+      permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          debugPrint('Location permissions are denied');
+          return false;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        debugPrint('Location permissions are permanently denied.');
+        return false;
+      }
+      return true;
+    } catch (e) {
+      debugPrint('Error checking location permission: $e');
+      return false;
+    }
+  }
+
+  Future<void> _startGPSTracking(String tripCode) async {
+    if (_gpsSubscription != null) return;
+
+    final hasPermission = await _checkLocationPermission();
+    if (!hasPermission) {
+      debugPrint('No location permission to start tracking');
+      return;
+    }
+
+    _locationStreamController = StreamController<Map<String, double>>.broadcast();
+
+    _liveTrackingService.startDriverTracking(
+      tripCode: tripCode,
+      locationStream: _locationStreamController!.stream,
+      pingInterval: const Duration(seconds: 5),
+    );
+
+    _gpsSubscription = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 0,
+      ),
+    ).listen((Position position) {
+      if (!mounted) return;
+
+      setState(() {
+        _currentPosition = position;
+      });
+
+      _debounceTimer?.cancel();
+      _debounceTimer = Timer(const Duration(seconds: 5), () {
+        if (_locationStreamController != null && !_locationStreamController!.isClosed) {
+          _locationStreamController!.add({
+            'lat': position.latitude,
+            'lng': position.longitude,
+          });
+        }
+      });
+
+      _mapController.move(LatLng(position.latitude, position.longitude), 12.5);
+    });
+  }
+
+  void _stopGPSTracking() {
+    _debounceTimer?.cancel();
+    _debounceTimer = null;
+    _gpsSubscription?.cancel();
+    _gpsSubscription = null;
+    _locationStreamController?.close();
+    _locationStreamController = null;
+    _liveTrackingService.disconnect();
   }
 
   Future<void> _fetchActiveTrip() async {
@@ -62,6 +205,22 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
               _mapController.move(LatLng(lat, lng), 12.5);
             });
           }
+
+          // Fetch the route points between warehouses to draw route line (Google Maps style)
+          final toWh = active['routeConfig']?['toWarehouse'];
+          final double? toLat = toWh?['latitude'] != null ? (toWh['latitude'] as num).toDouble() : null;
+          final double? toLng = toWh?['longitude'] != null ? (toWh['longitude'] as num).toDouble() : null;
+          if (lat != null && lng != null && toLat != null && toLng != null) {
+            _fetchOSRMRoute(lat, lng, toLat, toLng);
+          }
+
+          if (active['status'] == 'EN_ROUTE') {
+            _startGPSTracking(active['linehaulTripCode'] ?? '');
+          } else {
+            _stopGPSTracking();
+          }
+        } else {
+          _stopGPSTracking();
         }
       } else {
         setState(() {
@@ -85,12 +244,13 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
     LocationPermission permission;
 
     try {
+      print("Enable GPS");
       serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         debugPrint('Location services are disabled.');
         return;
       }
-
+      print("Check GPS permission");
       permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
@@ -104,15 +264,17 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
         debugPrint('Location permissions are permanently denied.');
         return;
       }
-
+      print("Get current GPS location");
       final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-        ),
+       locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        timeLimit: Duration(seconds: 10),
+       ),
       );
       setState(() {
         _currentPosition = position;
       });
+      print("Final handle GPS");
     } catch (e) {
       debugPrint('Error getting GPS location: $e');
     }
@@ -141,23 +303,16 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
     double lat = 0.0;
     double lng = 0.0;
 
-    if (_useMockLocation) {
-      // Simulate at From Warehouse
-      final fromWh = _activeTrip!['routeConfig']?['fromWarehouse'];
-      lat = fromWh?['latitude'] != null ? (fromWh['latitude'] as num).toDouble() : 10.762622;
-      lng = fromWh?['longitude'] != null ? (fromWh['longitude'] as num).toDouble() : 106.660172;
-    } else {
-      await _determinePosition();
-      if (_currentPosition == null) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thể lấy tọa độ GPS hiện tại. Vui lòng thử lại hoặc bật Giả lập.')),
-        );
-        return;
-      }
-      lat = _currentPosition!.latitude;
-      lng = _currentPosition!.longitude;
+    await _determinePosition();
+    if (_currentPosition == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không thể lấy tọa độ GPS hiện tại. Vui lòng thử lại.')),
+      );
+      return;
     }
+    lat = _currentPosition!.latitude;
+    lng = _currentPosition!.longitude;
 
     setState(() => _isLoading = true);
 
@@ -210,27 +365,21 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
     double lat = 0.0;
     double lng = 0.0;
 
-    if (_useMockLocation) {
-      // Simulate at To Warehouse
-      final toWh = _activeTrip!['routeConfig']?['toWarehouse'];
-      lat = toWh?['latitude'] != null ? (toWh['latitude'] as num).toDouble() : 10.762622;
-      lng = toWh?['longitude'] != null ? (toWh['longitude'] as num).toDouble() : 106.660172;
-    } else {
-      await _determinePosition();
-      if (_currentPosition == null) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thể lấy tọa độ GPS hiện tại. Vui lòng thử lại hoặc bật Giả lập.')),
-        );
-        return;
-      }
-      lat = _currentPosition!.latitude;
-      lng = _currentPosition!.longitude;
+    await _determinePosition();
+    if (_currentPosition == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không thể lấy tọa độ GPS hiện tại. Vui lòng thử lại.')),
+      );
+      return;
     }
+    lat = _currentPosition!.latitude;
+    lng = _currentPosition!.longitude;
 
     setState(() => _isLoading = true);
 
     try {
+      print("finish trip");
       final response = await _apiClient.post(
         'linehaul-trip/$tripId/finish',
         data: {
@@ -360,9 +509,10 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
         child: const Icon(Icons.location_on, color: Colors.redAccent, size: 30),
       ));
     }
-    if (_currentPosition != null) {
+    final activeLocation = _currentPosition != null ? LatLng(_currentPosition!.latitude, _currentPosition!.longitude) : null;
+    if (activeLocation != null) {
       markers.add(Marker(
-        point: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+        point: activeLocation,
         width: 40,
         height: 40,
         child: const Icon(Icons.navigation, color: Colors.green, size: 30),
@@ -405,7 +555,7 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
               FlutterMap(
                 mapController: _mapController,
                 options: MapOptions(
-                  initialCenter: LatLng(fromLat ?? 10.762, fromLng ?? 106.660),
+                  initialCenter: activeLocation ?? LatLng(fromLat ?? 10.762, fromLng ?? 106.660),
                   initialZoom: 12.0,
                 ),
                 children: [
@@ -413,6 +563,16 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
                     urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'com.overcode250204.smartlogisticssystem',
                   ),
+                  if (_routePoints.isNotEmpty)
+                    PolylineLayer(
+                      polylines: [
+                        Polyline(
+                          points: _routePoints,
+                          strokeWidth: 4,
+                          color: Colors.blueAccent,
+                        ),
+                      ],
+                    ),
                   MarkerLayer(markers: markers),
                 ],
               ),
@@ -429,8 +589,8 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
                         const Icon(Icons.gps_fixed, size: 16, color: Colors.green),
                         const SizedBox(width: 6),
                         Text(
-                          _currentPosition != null
-                              ? 'GPS: ${_currentPosition!.latitude.toStringAsFixed(4)}, ${_currentPosition!.longitude.toStringAsFixed(4)}'
+                          activeLocation != null
+                              ? 'GPS: ${activeLocation.latitude.toStringAsFixed(6)}, ${activeLocation.longitude.toStringAsFixed(6)}'
                               : 'Đang tìm tín hiệu GPS...',
                           style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
                         ),
@@ -528,33 +688,6 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-
-                // Testing Mock location switch
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.biotech, size: 18, color: Colors.blueAccent),
-                        SizedBox(width: 6),
-                        Text(
-                          'Giả lập vị trí tại Kho (để Test)',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.blueAccent),
-                        ),
-                      ],
-                    ),
-                    Switch(
-                      value: _useMockLocation,
-                      onChanged: (val) {
-                        setState(() {
-                          _useMockLocation = val;
-                        });
-                      },
-                      activeThumbColor: Colors.blueAccent,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
 
                 // Primary action buttons
                 if (status == 'CAN_START')

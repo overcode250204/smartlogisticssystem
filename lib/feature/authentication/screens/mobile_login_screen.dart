@@ -63,7 +63,7 @@ class _MobileLoginScreenState extends State<MobileLoginScreen> {
         // Callback kích hoạt khi Google gửi tin nhắn thành công
         setState(() {
           _isLoading = false;
-          _sessionInfo = verificationId;
+          _sessionInfo = "true";
           _isOtpSent = true;
         });
       },
@@ -83,7 +83,7 @@ class _MobileLoginScreenState extends State<MobileLoginScreen> {
   Future<void> _handleVerifyOtpAndLogin() async {
     final otp = _otpController.text.trim();
     final phone = _phoneController.text.trim();
-
+    
     Map<String, dynamic>? loginResult;
 
     if (AuthMockConfig.phoneOtpEnabled &&
