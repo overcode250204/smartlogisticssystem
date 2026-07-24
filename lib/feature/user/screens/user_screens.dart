@@ -190,6 +190,17 @@ class _UserListScreenState extends State<UserListScreen> {
 
   // Hiển thị Form THÊM / SỬA
 
+  // Chỉ giữ lại giá trị nếu nó thực sự có trong danh sách đã tải,
+  // tránh lỗi assert của DropdownButton khi dữ liệu chưa tải xong hoặc đã bị xóa.
+  int? _validZoneId(int? id) =>
+      _zones.any((z) => z.id == id) ? id : null;
+
+  int? _validWarehouseId(int? id) =>
+      _warehouses.any((w) => w.warehouseId == id) ? id : null;
+
+  int? _validVehicleId(int? id) =>
+      _vehicles.any((v) => v.vehicleId == id) ? id : null;
+
   Widget _buildRoleDropdown(StateSetter setStateDialog) {
     return DropdownButtonFormField<int>(
       value: _selectedRoleId,
@@ -405,6 +416,7 @@ class _UserListScreenState extends State<UserListScreen> {
                             children: [
                               Expanded(
                                 child: DropdownButtonFormField<String>(
+                                  isExpanded: true,
                                   value: _selectedDriverType,
                                   items: const [
                                     DropdownMenuItem(value: 'LINEHAUL', child: Text('Linehaul')),
@@ -420,7 +432,8 @@ class _UserListScreenState extends State<UserListScreen> {
                               const SizedBox(width: 16),
                               Expanded(
                                 child: DropdownButtonFormField<int?>(
-                                  value: _selectedZoneId,
+                                  isExpanded: true,
+                                  value: _validZoneId(_selectedZoneId),
                                   items: [
                                     const DropdownMenuItem(value: null, child: Text('Không chọn khu vực')),
                                     ..._zones.map((z) => DropdownMenuItem(value: z.id, child: Text(z.name))),
@@ -439,7 +452,8 @@ class _UserListScreenState extends State<UserListScreen> {
                             children: [
                               Expanded(
                                 child: DropdownButtonFormField<int?>(
-                                  value: _selectedWarehouseId,
+                                  isExpanded: true,
+                                  value: _validWarehouseId(_selectedWarehouseId),
                                   items: [
                                     const DropdownMenuItem(value: null, child: Text('Không chọn nhà kho')),
                                     ..._warehouses.map((w) => DropdownMenuItem(value: w.warehouseId, child: Text(w.name))),
@@ -454,7 +468,8 @@ class _UserListScreenState extends State<UserListScreen> {
                               const SizedBox(width: 16),
                               Expanded(
                                 child: DropdownButtonFormField<int?>(
-                                  value: _selectedVehicleId,
+                                  isExpanded: true,
+                                  value: _validVehicleId(_selectedVehicleId),
                                   items: [
                                     const DropdownMenuItem(value: null, child: Text('Không chọn phương tiện')),
                                     ..._vehicles.map((v) => DropdownMenuItem(value: v.vehicleId, child: Text('${v.licensePlate ?? "N/A"} (${v.maxWeightKg} kg)'))),

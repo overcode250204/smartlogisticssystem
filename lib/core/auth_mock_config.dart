@@ -27,7 +27,7 @@ class AuthMockConfig {
 
   static const int staffUserId = int.fromEnvironment(
     'MOCK_STAFF_USER_ID',
-    defaultValue: 11,
+    defaultValue: 5,
   );
 
   static const String mockVerificationId = 'mock-phone-auth-verification-id';

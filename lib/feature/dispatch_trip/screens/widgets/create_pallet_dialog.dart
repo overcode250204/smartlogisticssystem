@@ -39,7 +39,9 @@ class _CreatePalletDialogState extends State<CreatePalletDialog> {
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textSecondary)),
             const SizedBox(height: 6),
             DropdownButtonFormField<int>(
-              value: _selectedRouteId,
+              value: widget.allRouteConfigs.any((r) => r.routeId == _selectedRouteId)
+                  ? _selectedRouteId
+                  : null,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),

@@ -541,6 +541,9 @@ class _DispatchManagementPageState extends State<DispatchManagementPage> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
                           );
+                          // Conflict/race (409) hoặc lỗi khác: refetch để UI phản
+                          // ánh đúng trạng thái backend, không giữ dữ liệu giả.
+                          _loadData();
                         }
                       },
                       onDeletePallet: (palletId) async {
@@ -778,13 +781,20 @@ class _DispatchManagementPageState extends State<DispatchManagementPage> {
           ),
           child: ExpansionTile(
             leading: const Icon(Icons.inventory_2, color: AppColors.primary, size: 20),
-            title: Text(pallet.palletCode ?? 'Unknown Pallet', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-            subtitle: Text('${pallet.palletItems?.length ?? 0} kiện • ${pallet.totalWeightKg ?? 0}kg', style: const TextStyle(color: AppColors.textSecondary)),
-            shape: const Border(),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
+            title: Text(
+              pallet.palletCode ?? 'Unknown Pallet',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+            ),
+            // Badge trạng thái nằm ở subtitle để không chiếm hết bề ngang của title
+            subtitle: Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                if (pallet.status != null) ...[
+                Text('${pallet.palletItems?.length ?? 0} kiện • ${pallet.totalWeightKg ?? 0}kg', style: const TextStyle(color: AppColors.textSecondary)),
+                if (pallet.status != null)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
@@ -799,9 +809,8 @@ class _DispatchManagementPageState extends State<DispatchManagementPage> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                ] else ...[
+                  )
+                else
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
@@ -810,8 +819,12 @@ class _DispatchManagementPageState extends State<DispatchManagementPage> {
                     ),
                     child: const Text('Chờ xếp xe', style: TextStyle(color: AppColors.info, fontSize: 10, fontWeight: FontWeight.bold)),
                   ),
-                  const SizedBox(width: 8),
-                ],
+              ],
+            ),
+            shape: const Border(),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 if (pallet.status == 'CREATING') ...[
                   IconButton(
                     icon: const Icon(Icons.lock_open, size: 18, color: AppColors.primary),

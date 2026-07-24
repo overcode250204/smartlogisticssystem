@@ -24,13 +24,12 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
 
   // GPS state
   Position? _currentPosition;
-  bool _useMockLocation = true; // Default to true for easy testing/grading
+  StreamSubscription<Position>? _gpsSubscription;
+  StreamController<Map<String, double>>? _locationStreamController;
+  Timer? _debounceTimer;
 
-  // Simulation State
+  // Route State
   List<LatLng> _routePoints = [];
-  LatLng? _simulatedPosition;
-  Timer? _simulationTimer;
-  bool _isSimulating = false;
   final LiveTrackingService _liveTrackingService = LiveTrackingService();
 
   @override
@@ -43,8 +42,7 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
 
   @override
   void dispose() {
-    _simulationTimer?.cancel();
-    _liveTrackingService.disconnect();
+    _stopGPSTracking();
     super.dispose();
   }
 
@@ -91,73 +89,88 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
     });
   }
 
-  // void _startSimulation(String tripCode) {
-  //   if (_routePoints.isEmpty) return;
+  Future<bool> _checkLocationPermission() async {
+    bool serviceEnabled;
+    LocationPermission permission;
 
-  //   _simulationTimer?.cancel();
-  //   setState(() {
-  //     _isSimulating = true;
-  //     _simulatedPosition = _routePoints.first;
-  //   });
-
-  //   final streamController = StreamController<Map<String, double>>.broadcast();
-    
-  //   _liveTrackingService.startDriverTracking(
-  //     tripCode: tripCode,
-  //     locationStream: streamController.stream,
-  //     pingInterval: const Duration(seconds: 1),
-  //   );
-
-  //   int currentTick = 0;
-  //   const totalTicks = 60; // 60 seconds = 1 minute
-
-  //   _simulationTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-  //     currentTick++;
-  //     if (currentTick >= totalTicks || !mounted) {
-  //       timer.cancel();
-  //       _simulationTimer = null;
-  //       setState(() {
-  //         _isSimulating = false;
-  //         _simulatedPosition = _routePoints.last;
-  //       });
-  //       streamController.close();
-  //       _liveTrackingService.disconnect();
-  //       return;
-  //     }
-
-  //     final progress = currentTick / totalTicks;
-  //     final targetIndex = (progress * (_routePoints.length - 1)).round();
-  //     final currentPt = _routePoints[targetIndex];
-
-  //     setState(() {
-  //       _simulatedPosition = currentPt;
-  //     });
-
-  //     _mapController.move(currentPt, 12.5);
-
-  //     streamController.add({
-  //       'lat': currentPt.latitude,
-  //       'lng': currentPt.longitude,
-  //     });
-  //   });
-  // }
-
-  Future<void> _setupSimulationForTrip(Map<String, dynamic> active) async {
-    final route = active['routeConfig'];
-    final fromWh = route?['fromWarehouse'];
-    final toWh = route?['toWarehouse'];
-    final double? fromLat = fromWh?['latitude'] != null ? (fromWh['latitude'] as num).toDouble() : null;
-    final double? fromLng = fromWh?['longitude'] != null ? (fromWh['longitude'] as num).toDouble() : null;
-    final double? toLat = toWh?['latitude'] != null ? (toWh['latitude'] as num).toDouble() : null;
-    final double? toLng = toWh?['longitude'] != null ? (toWh['longitude'] as num).toDouble() : null;
-
-    if (fromLat != null && fromLng != null && toLat != null && toLng != null) {
-      await _fetchOSRMRoute(fromLat, fromLng, toLat, toLng);
-      final tripCode = active['linehaulTripCode'] ?? '';
-      if (tripCode.isNotEmpty && !_isSimulating) {
-        _startSimulation(tripCode);
+    try {
+      serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        debugPrint('Location services are disabled.');
+        return false;
       }
+
+      permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          debugPrint('Location permissions are denied');
+          return false;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        debugPrint('Location permissions are permanently denied.');
+        return false;
+      }
+      return true;
+    } catch (e) {
+      debugPrint('Error checking location permission: $e');
+      return false;
     }
+  }
+
+  Future<void> _startGPSTracking(String tripCode) async {
+    if (_gpsSubscription != null) return;
+
+    final hasPermission = await _checkLocationPermission();
+    if (!hasPermission) {
+      debugPrint('No location permission to start tracking');
+      return;
+    }
+
+    _locationStreamController = StreamController<Map<String, double>>.broadcast();
+
+    _liveTrackingService.startDriverTracking(
+      tripCode: tripCode,
+      locationStream: _locationStreamController!.stream,
+      pingInterval: const Duration(seconds: 5),
+    );
+
+    _gpsSubscription = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 0,
+      ),
+    ).listen((Position position) {
+      if (!mounted) return;
+
+      setState(() {
+        _currentPosition = position;
+      });
+
+      _debounceTimer?.cancel();
+      _debounceTimer = Timer(const Duration(seconds: 5), () {
+        if (_locationStreamController != null && !_locationStreamController!.isClosed) {
+          _locationStreamController!.add({
+            'lat': position.latitude,
+            'lng': position.longitude,
+          });
+        }
+      });
+
+      _mapController.move(LatLng(position.latitude, position.longitude), 12.5);
+    });
+  }
+
+  void _stopGPSTracking() {
+    _debounceTimer?.cancel();
+    _debounceTimer = null;
+    _gpsSubscription?.cancel();
+    _gpsSubscription = null;
+    _locationStreamController?.close();
+    _locationStreamController = null;
+    _liveTrackingService.disconnect();
   }
 
   Future<void> _fetchActiveTrip() async {
@@ -193,9 +206,21 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
             });
           }
 
-          if (active['status'] == 'EN_ROUTE' && _useMockLocation && !_isSimulating) {
-            _setupSimulationForTrip(active);
+          // Fetch the route points between warehouses to draw route line (Google Maps style)
+          final toWh = active['routeConfig']?['toWarehouse'];
+          final double? toLat = toWh?['latitude'] != null ? (toWh['latitude'] as num).toDouble() : null;
+          final double? toLng = toWh?['longitude'] != null ? (toWh['longitude'] as num).toDouble() : null;
+          if (lat != null && lng != null && toLat != null && toLng != null) {
+            _fetchOSRMRoute(lat, lng, toLat, toLng);
           }
+
+          if (active['status'] == 'EN_ROUTE') {
+            _startGPSTracking(active['linehaulTripCode'] ?? '');
+          } else {
+            _stopGPSTracking();
+          }
+        } else {
+          _stopGPSTracking();
         }
       } else {
         setState(() {
@@ -278,23 +303,16 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
     double lat = 0.0;
     double lng = 0.0;
 
-    if (_useMockLocation) {
-      // Simulate at From Warehouse
-      final fromWh = _activeTrip!['routeConfig']?['fromWarehouse'];
-      lat = fromWh?['latitude'] != null ? (fromWh['latitude'] as num).toDouble() : 10.762622;
-      lng = fromWh?['longitude'] != null ? (fromWh['longitude'] as num).toDouble() : 106.660172;
-    } else {
-      await _determinePosition();
-      if (_currentPosition == null) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thể lấy tọa độ GPS hiện tại. Vui lòng thử lại hoặc bật Giả lập.')),
-        );
-        return;
-      }
-      lat = _currentPosition!.latitude;
-      lng = _currentPosition!.longitude;
+    await _determinePosition();
+    if (_currentPosition == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không thể lấy tọa độ GPS hiện tại. Vui lòng thử lại.')),
+      );
+      return;
     }
+    lat = _currentPosition!.latitude;
+    lng = _currentPosition!.longitude;
 
     setState(() => _isLoading = true);
 
@@ -347,23 +365,16 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
     double lat = 0.0;
     double lng = 0.0;
 
-    if (_useMockLocation) {
-      // Simulate at To Warehouse
-      final toWh = _activeTrip!['routeConfig']?['toWarehouse'];
-      lat = toWh?['latitude'] != null ? (toWh['latitude'] as num).toDouble() : 10.762622;
-      lng = toWh?['longitude'] != null ? (toWh['longitude'] as num).toDouble() : 106.660172;
-    } else {
-      await _determinePosition();
-      if (_currentPosition == null) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thể lấy tọa độ GPS hiện tại. Vui lòng thử lại hoặc bật Giả lập.')),
-        );
-        return;
-      }
-      lat = _currentPosition!.latitude;
-      lng = _currentPosition!.longitude;
+    await _determinePosition();
+    if (_currentPosition == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không thể lấy tọa độ GPS hiện tại. Vui lòng thử lại.')),
+      );
+      return;
     }
+    lat = _currentPosition!.latitude;
+    lng = _currentPosition!.longitude;
 
     setState(() => _isLoading = true);
 
@@ -498,7 +509,7 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
         child: const Icon(Icons.location_on, color: Colors.redAccent, size: 30),
       ));
     }
-    final activeLocation = _simulatedPosition ?? (_currentPosition != null ? LatLng(_currentPosition!.latitude, _currentPosition!.longitude) : null);
+    final activeLocation = _currentPosition != null ? LatLng(_currentPosition!.latitude, _currentPosition!.longitude) : null;
     if (activeLocation != null) {
       markers.add(Marker(
         point: activeLocation,
@@ -578,11 +589,9 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
                         const Icon(Icons.gps_fixed, size: 16, color: Colors.green),
                         const SizedBox(width: 6),
                         Text(
-                          _isSimulating
-                              ? 'Giả lập GPS: ${_simulatedPosition!.latitude.toStringAsFixed(6)}, ${_simulatedPosition!.longitude.toStringAsFixed(6)}'
-                              : activeLocation != null
-                                  ? 'GPS: ${activeLocation.latitude.toStringAsFixed(6)}, ${activeLocation.longitude.toStringAsFixed(6)}'
-                                  : 'Đang tìm tín hiệu GPS...',
+                          activeLocation != null
+                              ? 'GPS: ${activeLocation.latitude.toStringAsFixed(6)}, ${activeLocation.longitude.toStringAsFixed(6)}'
+                              : 'Đang tìm tín hiệu GPS...',
                           style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
                         ),
                       ],
@@ -679,33 +688,6 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-
-                // Testing Mock location switch
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.biotech, size: 18, color: Colors.blueAccent),
-                        SizedBox(width: 6),
-                        Text(
-                          'Giả lập vị trí tại Kho (để Test)',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.blueAccent),
-                        ),
-                      ],
-                    ),
-                    Switch(
-                      value: _useMockLocation,
-                      onChanged: (val) {
-                        setState(() {
-                          _useMockLocation = val;
-                        });
-                      },
-                      activeThumbColor: Colors.blueAccent,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
 
                 // Primary action buttons
                 if (status == 'CAN_START')
