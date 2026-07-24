@@ -7,15 +7,21 @@ class LogisticsDashboardService {
   final ApiClient _client = ApiClient();
 
   Future<LogisticsDashboardData> getDashboardStats({
-    required String timeFilter,
+    required String timeframe,
+    required String region,
+    required int month,
+    required int year,
   }) async {
     try {
       final Map<String, dynamic> queryParams = {
-        'timeFilter': timeFilter,
+        'timeframe': timeframe,
+        'region': region,
+        'month': month,
+        'year': year,
       };
 
       final response = await _client.get(
-        'admin/logistics-dashboard/stats',
+        'trip-dashboard/stats',
         queryParameters: queryParams,
       );
 

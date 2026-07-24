@@ -91,56 +91,56 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
     });
   }
 
-  void _startSimulation(String tripCode) {
-    if (_routePoints.isEmpty) return;
+  // void _startSimulation(String tripCode) {
+  //   if (_routePoints.isEmpty) return;
 
-    _simulationTimer?.cancel();
-    setState(() {
-      _isSimulating = true;
-      _simulatedPosition = _routePoints.first;
-    });
+  //   _simulationTimer?.cancel();
+  //   setState(() {
+  //     _isSimulating = true;
+  //     _simulatedPosition = _routePoints.first;
+  //   });
 
-    final streamController = StreamController<Map<String, double>>.broadcast();
+  //   final streamController = StreamController<Map<String, double>>.broadcast();
     
-    _liveTrackingService.startDriverTracking(
-      tripCode: tripCode,
-      locationStream: streamController.stream,
-      pingInterval: const Duration(seconds: 1),
-    );
+  //   _liveTrackingService.startDriverTracking(
+  //     tripCode: tripCode,
+  //     locationStream: streamController.stream,
+  //     pingInterval: const Duration(seconds: 1),
+  //   );
 
-    int currentTick = 0;
-    const totalTicks = 60; // 60 seconds = 1 minute
+  //   int currentTick = 0;
+  //   const totalTicks = 60; // 60 seconds = 1 minute
 
-    _simulationTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      currentTick++;
-      if (currentTick >= totalTicks || !mounted) {
-        timer.cancel();
-        _simulationTimer = null;
-        setState(() {
-          _isSimulating = false;
-          _simulatedPosition = _routePoints.last;
-        });
-        streamController.close();
-        _liveTrackingService.disconnect();
-        return;
-      }
+  //   _simulationTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+  //     currentTick++;
+  //     if (currentTick >= totalTicks || !mounted) {
+  //       timer.cancel();
+  //       _simulationTimer = null;
+  //       setState(() {
+  //         _isSimulating = false;
+  //         _simulatedPosition = _routePoints.last;
+  //       });
+  //       streamController.close();
+  //       _liveTrackingService.disconnect();
+  //       return;
+  //     }
 
-      final progress = currentTick / totalTicks;
-      final targetIndex = (progress * (_routePoints.length - 1)).round();
-      final currentPt = _routePoints[targetIndex];
+  //     final progress = currentTick / totalTicks;
+  //     final targetIndex = (progress * (_routePoints.length - 1)).round();
+  //     final currentPt = _routePoints[targetIndex];
 
-      setState(() {
-        _simulatedPosition = currentPt;
-      });
+  //     setState(() {
+  //       _simulatedPosition = currentPt;
+  //     });
 
-      _mapController.move(currentPt, 12.5);
+  //     _mapController.move(currentPt, 12.5);
 
-      streamController.add({
-        'lat': currentPt.latitude,
-        'lng': currentPt.longitude,
-      });
-    });
-  }
+  //     streamController.add({
+  //       'lat': currentPt.latitude,
+  //       'lng': currentPt.longitude,
+  //     });
+  //   });
+  // }
 
   Future<void> _setupSimulationForTrip(Map<String, dynamic> active) async {
     final route = active['routeConfig'];

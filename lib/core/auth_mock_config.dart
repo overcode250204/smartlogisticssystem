@@ -22,7 +22,7 @@ class AuthMockConfig {
 
   static const int driverUserId = int.fromEnvironment(
     'MOCK_DRIVER_USER_ID',
-    defaultValue: 6,
+    defaultValue: 5,
   );
 
   static const int staffUserId = int.fromEnvironment(
