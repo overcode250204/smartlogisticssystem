@@ -3,23 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smartlogisticssystem/data/model/pallet_item_model.dart';
 import 'package:smartlogisticssystem/data/model/pallet_model.dart';
-import 'package:smartlogisticssystem/feature/customer/service/location_service.dart';
 import 'package:smartlogisticssystem/feature/staff/services/pallet_task_service.dart';
 import 'package:smartlogisticssystem/feature/staff/services/pallet_task_state.dart';
 import 'package:smartlogisticssystem/widgets/api_error_message.dart';
 import 'package:smartlogisticssystem/widgets/barcode_scanner_sheet.dart';
 
-/// Toạ độ GPS gửi kèm khi xác nhận nhận hàng.
+/// Toạ độ gửi kèm khi xác nhận nhận hàng.
 typedef GpsCoordinate = ({double latitude, double longitude});
-
-/// Lấy vị trí hiện tại. Tách ra để test inject được, production dùng
-/// [LocationService] (đã có sẵn geolocator + xử lý quyền).
-typedef LocationProvider = Future<GpsCoordinate> Function();
-
-Future<GpsCoordinate> _defaultLocationProvider() async {
-  final position = await LocationService().getCurrentPosition();
-  return (latitude: position.latitude, longitude: position.longitude);
-}
 
 class PalletTaskDetailPage extends StatefulWidget {
   final int palletId;
@@ -27,14 +17,10 @@ class PalletTaskDetailPage extends StatefulWidget {
   /// Cho phép inject service trong test; production dùng ApiClient thật.
   final PalletTaskService? service;
 
-  /// Cho phép inject vị trí trong test; production lấy GPS thật.
-  final LocationProvider? locationProvider;
-
   const PalletTaskDetailPage({
     super.key,
     required this.palletId,
     this.service,
-    this.locationProvider,
   });
 
   @override
@@ -43,8 +29,6 @@ class PalletTaskDetailPage extends StatefulWidget {
 
 class _PalletTaskDetailPageState extends State<PalletTaskDetailPage> {
   late final PalletTaskService _service = widget.service ?? PalletTaskService();
-  late final LocationProvider _locationProvider =
-      widget.locationProvider ?? _defaultLocationProvider;
   final TextEditingController _orderCodeController = TextEditingController();
   final TextEditingController _arrivalCodeController = TextEditingController();
   final TextEditingController _filterController = TextEditingController();
@@ -239,16 +223,20 @@ class _PalletTaskDetailPageState extends State<PalletTaskDetailPage> {
     });
   }
 
-  /// Lấy GPS; trả null nếu thất bại (đã hiển thị lỗi cho người dùng).
-  Future<GpsCoordinate?> _resolveLocation() async {
-    try {
-      return await _locationProvider();
-    } catch (error) {
-      if (mounted) {
-        _showSnack('Không lấy được vị trí: $error', isError: true);
-      }
-      return null;
-    }
+  /// Toạ độ dùng để xác nhận hàng đến kho.
+  ///
+  /// KHÔNG lấy GPS thiết bị: backend (`PalletServiceImpl.confirmOrderArrival` /
+  /// `confirmPalletArrival`) validate khoảng cách ≤500m tới toạ độ
+  /// `routeConfig.toWarehouse`, không phải vị trí thiết bị hay địa chỉ giao
+  /// hàng của khách. Lấy đúng nguồn đó từ dữ liệu pallet đã tải, dùng chung cho
+  /// cả confirm order lẫn confirm pallet — mọi order trong pallet luôn cùng
+  /// route với pallet (backend chặn ROUTE_MISMATCH khi thêm order vào pallet),
+  /// nên toWarehouse của pallet cũng chính là toWarehouse của từng order.
+  /// Trả null nếu pallet chưa có tuyến/kho đích -> nơi gọi phải chặn, không gọi API.
+  GpsCoordinate? _resolveArrivalCoordinate() {
+    final warehouse = _pallet?.routeConfig?.toWarehouse;
+    if (warehouse == null) return null;
+    return (latitude: warehouse.latitude, longitude: warehouse.longitude);
   }
 
   Future<void> _confirmPalletArrival(PalletTaskState state) async {
@@ -279,8 +267,20 @@ class _PalletTaskDetailPageState extends State<PalletTaskDetailPage> {
     );
     if (confirmed != true) return;
 
-    final location = await _resolveLocation();
-    if (location == null) return;
+    final location = _resolveArrivalCoordinate();
+    if (location == null) {
+      _showSnack(
+        'Không thể xác nhận pallet vì chưa có tọa độ kho nhận.',
+        isError: true,
+      );
+      return;
+    }
+
+    debugPrint(
+      '[ARRIVAL DEBUG] palletCode=$palletCode '
+      'latitude=${location.latitude} longitude=${location.longitude} '
+      'source=routeConfig.toWarehouse',
+    );
 
     await _runAction(() async {
       await _service.confirmPalletArrival(
@@ -319,8 +319,22 @@ class _PalletTaskDetailPageState extends State<PalletTaskDetailPage> {
       if (confirmed != true) return;
     }
 
-    final location = await _resolveLocation();
-    if (location == null) return;
+    final location = _resolveArrivalCoordinate();
+    if (location == null) {
+      setState(() {
+        if (fromScan) {
+          _arrivalScanError = 'Không thể xác nhận vì chưa có tọa độ kho nhận.';
+        }
+      });
+      _showSnack('Không thể xác nhận vì chưa có tọa độ kho nhận.', isError: true);
+      return;
+    }
+
+    debugPrint(
+      '[ARRIVAL DEBUG] orderCode=$orderCode '
+      'latitude=${location.latitude} longitude=${location.longitude} '
+      'source=routeConfig.toWarehouse',
+    );
 
     setState(() => _confirmingOrderCode = orderCode);
     try {
@@ -366,6 +380,23 @@ class _PalletTaskDetailPageState extends State<PalletTaskDetailPage> {
       );
     }
     _arrivalFocusNode.requestFocus();
+  }
+
+  /// Mở camera quét mã đơn, đưa kết quả vào ô nhập rồi tự động xác nhận đã nhận.
+  Future<void> _scanArrivalWithCamera() async {
+    if (_submitting || _confirmingOrderCode != null) return;
+    // Đóng bàn phím trước khi mở camera để không bị che / giật layout.
+    FocusScope.of(context).unfocus();
+
+    final code = await scanBarcodeWithCamera(context);
+    if (!mounted || code == null || code.isEmpty) {
+      // Người dùng đóng camera mà không quét — focus lại input để nhập tay.
+      if (mounted) _arrivalFocusNode.requestFocus();
+      return;
+    }
+
+    _arrivalCodeController.text = code;
+    await _scanConfirmArrival();
   }
 
   @override
@@ -597,20 +628,46 @@ class _PalletTaskDetailPageState extends State<PalletTaskDetailPage> {
                   errorText: _arrivalScanError,
                   border: const OutlineInputBorder(),
                   prefixIcon: const Icon(Icons.qr_code_scanner),
+                  // Nút camera ngay trong ô nhập để dễ bấm trên mobile.
+                  suffixIcon: IconButton(
+                    tooltip: 'Quét bằng camera',
+                    icon: const Icon(Icons.photo_camera),
+                    onPressed: _confirmingOrderCode == null && !_submitting
+                        ? _scanArrivalWithCamera
+                        : null,
+                  ),
                 ),
                 onSubmitted: (_) => _scanConfirmArrival(),
               ),
               const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: OutlinedButton.icon(
-                  onPressed: _confirmingOrderCode == null && !_submitting
-                      ? _scanConfirmArrival
-                      : null,
-                  icon: const Icon(Icons.check),
-                  label: const Text('Xác nhận đơn đã quét'),
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 48,
+                      child: OutlinedButton.icon(
+                        onPressed: _confirmingOrderCode == null && !_submitting
+                            ? _scanConfirmArrival
+                            : null,
+                        icon: const Icon(Icons.check),
+                        label: const Text('Xác nhận đã quét'),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: SizedBox(
+                      height: 48,
+                      child: OutlinedButton.icon(
+                        onPressed: _confirmingOrderCode == null && !_submitting
+                            ? _scanArrivalWithCamera
+                            : null,
+                        icon: const Icon(Icons.photo_camera),
+                        label: const Text('Quét bằng camera'),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ],

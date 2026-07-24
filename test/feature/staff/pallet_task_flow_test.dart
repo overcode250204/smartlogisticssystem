@@ -28,11 +28,50 @@ Map<String, dynamic> orderJson(String code, {String status = 'READY_TO_PICK'}) {
   };
 }
 
+/// Toạ độ kho mặc định dùng trong test — trùng với toạ độ GPS giả trước đây
+/// (fakeLocation) để các assertion cũ về lastCoordinate vẫn còn ý nghĩa.
+Map<String, dynamic> warehouseJson({
+  int warehouseId = 2,
+  String name = 'Hub Ha Noi',
+  double latitude = 21.0,
+  double longitude = 105.0,
+}) {
+  return {
+    'warehouseId': warehouseId,
+    'name': name,
+    'type': 'HUB',
+    'address': 'Dia chi kho',
+    'province': 'Ha Noi',
+    'latitude': latitude,
+    'longitude': longitude,
+  };
+}
+
+/// routeConfig.toWarehouse là nguồn toạ độ mà PalletTaskDetailPage dùng để
+/// xác nhận hàng đến kho (không còn dùng GPS thiết bị).
+Map<String, dynamic> routeConfigJson({
+  int routeId = 1,
+  String routeName = 'Tuyen test',
+  Map<String, dynamic>? toWarehouse,
+}) {
+  return {
+    'routeId': routeId,
+    'routeName': routeName,
+    'fromWarehouse': warehouseJson(warehouseId: 1, name: 'CDC test'),
+    'toWarehouse': toWarehouse ?? warehouseJson(),
+    'dispatchType': 'TIME',
+    'cutoffTime': '17:00',
+    'provinceNames': <String>[],
+    'isActive': true,
+  };
+}
+
 Map<String, dynamic> palletJson({
   int palletId = 1,
   String palletCode = 'PL-000000000001',
   String status = 'CAN_SEAL',
   List<Map<String, dynamic>> items = const [],
+  Map<String, dynamic>? routeConfig,
 }) {
   return {
     'palletId': palletId,
@@ -43,6 +82,7 @@ Map<String, dynamic> palletJson({
     'totalVolumeM3': 0.04,
     'isCreatedSystem': true,
     'palletItems': items,
+    'routeConfig': ?routeConfig,
   };
 }
 
@@ -142,6 +182,7 @@ class FakePalletTaskService extends PalletTaskService {
       status: 'SEALED',
       items: (detail?['palletItems'] as List<dynamic>? ?? const [])
           .cast<Map<String, dynamic>>(),
+      routeConfig: detail?['routeConfig'] as Map<String, dynamic>?,
     );
     return PalletModel.fromJson(detail!);
   }
@@ -167,6 +208,7 @@ class FakePalletTaskService extends PalletTaskService {
       status: 'ARRIVED',
       items: (detail?['palletItems'] as List<dynamic>? ?? const [])
           .cast<Map<String, dynamic>>(),
+      routeConfig: detail?['routeConfig'] as Map<String, dynamic>?,
     );
     return PalletModel.fromJson(detail!);
   }
@@ -185,8 +227,10 @@ class FakePalletTaskService extends PalletTaskService {
   }
 }
 
-Future<({double latitude, double longitude})> fakeLocation() async =>
-    (latitude: 21.0, longitude: 105.0);
+/// Sentinel để phân biệt "không truyền routeConfig" (dùng mặc định) với
+/// "truyền routeConfig: null" (mô phỏng pallet thiếu tuyến/kho đích) trong
+/// [pumpArrival], vì `null` tự nó là một giá trị hợp lệ cần test riêng.
+const Object _useDefaultRouteConfig = Object();
 
 Widget wrap(Widget child) => MaterialApp(home: child);
 
@@ -622,18 +666,23 @@ void main() {
       WidgetTester tester, {
       required String status,
       required List<Map<String, dynamic>> items,
+      // Mặc định có routeConfig.toWarehouse hợp lệ — đây là nguồn toạ độ mà
+      // PalletTaskDetailPage dùng để xác nhận hàng đến kho (không còn GPS).
+      // Truyền null để mô phỏng pallet thiếu tuyến/kho đích.
+      Object? routeConfig = _useDefaultRouteConfig,
     }) async {
+      final resolvedRouteConfig = identical(routeConfig, _useDefaultRouteConfig)
+          ? routeConfigJson()
+          : routeConfig as Map<String, dynamic>?;
       final service = FakePalletTaskService()
-        ..detail = palletJson(status: status, items: items);
+        ..detail = palletJson(
+          status: status,
+          items: items,
+          routeConfig: resolvedRouteConfig,
+        );
       await useTallSurface(tester);
       await tester.pumpWidget(
-        wrap(
-          PalletTaskDetailPage(
-            palletId: 1,
-            service: service,
-            locationProvider: fakeLocation,
-          ),
-        ),
+        wrap(PalletTaskDetailPage(palletId: 1, service: service)),
       );
       await tester.pumpAndSettle();
       return service;
@@ -684,32 +733,81 @@ void main() {
       expect(find.textContaining('Pallet đã được xác nhận đến nơi'), findsOneWidget);
     });
 
-    testWidgets('confirm pallet lỗi GPS: hiện message, không thành công giả', (
-      tester,
-    ) async {
-      final service = await pumpArrival(
-        tester,
-        status: 'IN_TRANSIT',
-        items: [itemJson('OD1', orderStatus: 'IN_TRANSIT_LINEHAUL')],
-      );
-      service.palletArrivalError = apiError(
-        400,
-        'GPS location is not near the destination warehouse',
-      );
+    testWidgets(
+      'confirm pallet lỗi backend (vị trí không hợp lệ): hiện message, không thành công giả',
+      (tester) async {
+        final service = await pumpArrival(
+          tester,
+          status: 'IN_TRANSIT',
+          items: [itemJson('OD1', orderStatus: 'IN_TRANSIT_LINEHAUL')],
+        );
+        service.palletArrivalError = apiError(
+          400,
+          'GPS location is not near the destination warehouse',
+        );
 
-      await tester.tap(
-        find.widgetWithText(FilledButton, 'Xác nhận đã nhận pallet'),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, 'Xác nhận'));
-      await tester.pumpAndSettle();
+        await tester.tap(
+          find.widgetWithText(FilledButton, 'Xác nhận đã nhận pallet'),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(FilledButton, 'Xác nhận'));
+        await tester.pumpAndSettle();
 
-      expect(find.textContaining('Pallet đã được xác nhận'), findsNothing);
-      expect(
-        find.widgetWithText(FilledButton, 'Xác nhận đã nhận pallet'),
-        findsOneWidget,
-      );
-    });
+        expect(find.textContaining('Pallet đã được xác nhận'), findsNothing);
+        expect(
+          find.widgetWithText(FilledButton, 'Xác nhận đã nhận pallet'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'pallet thiếu routeConfig/toWarehouse: không gọi API confirm pallet, hiện lỗi rõ ràng',
+      (tester) async {
+        final service = await pumpArrival(
+          tester,
+          status: 'IN_TRANSIT',
+          items: [itemJson('OD1', orderStatus: 'IN_TRANSIT_LINEHAUL')],
+          routeConfig: null,
+        );
+
+        await tester.tap(
+          find.widgetWithText(FilledButton, 'Xác nhận đã nhận pallet'),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(FilledButton, 'Xác nhận'));
+        await tester.pumpAndSettle();
+
+        expect(service.palletArrivalCalls, 0);
+        expect(
+          find.text('Không thể xác nhận pallet vì chưa có tọa độ kho nhận.'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'order thiếu routeConfig/toWarehouse: không gọi API confirm order, hiện lỗi rõ ràng',
+      (tester) async {
+        final service = await pumpArrival(
+          tester,
+          status: 'IN_TRANSIT',
+          items: [itemJson('OD9', orderStatus: 'IN_TRANSIT_LINEHAUL')],
+          routeConfig: null,
+        );
+
+        await tester.tap(find.text('Xác nhận đã nhận'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(FilledButton, 'Xác nhận'));
+        await tester.pumpAndSettle();
+
+        expect(service.orderArrivalCalls, 0);
+        expect(
+          find.text('Không thể xác nhận vì chưa có tọa độ kho nhận.'),
+          findsWidgets,
+        );
+      },
+    );
 
     testWidgets('order confirm button: chỉ hiện khi IN_TRANSIT_LINEHAUL', (
       tester,
