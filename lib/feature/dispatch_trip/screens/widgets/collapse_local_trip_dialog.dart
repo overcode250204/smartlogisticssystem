@@ -53,7 +53,10 @@ class _CollapseLocalTripDialogState extends State<CollapseLocalTripDialog> {
               )
             else
               DropdownButtonFormField<int>(
-                value: _selectedTargetTripId,
+                // Chuyến đã chọn có thể biến mất khỏi danh sách sau khi refresh
+                value: validTargets.any((t) => t.localTripId == _selectedTargetTripId)
+                    ? _selectedTargetTripId
+                    : null,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
                   contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),

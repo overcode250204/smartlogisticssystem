@@ -207,7 +207,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 if (_isMobile) ...[
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: () => context.go('/role-select'),
+                    icon: const Icon(Icons.arrow_back, size: 18),
+                    label: const Text('Chọn lại vai trò'),
+                  ),
                   TextButton(
                     onPressed: () {
                       Navigator.push(

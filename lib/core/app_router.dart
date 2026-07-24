@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smartlogisticssystem/core/auth_session.dart';
 import 'package:smartlogisticssystem/feature/authentication/screens/login_screen.dart';
 import 'package:smartlogisticssystem/feature/authentication/screens/mobile_login_screen.dart';
+import 'package:smartlogisticssystem/feature/authentication/screens/role_select_screen.dart';
 import 'package:smartlogisticssystem/feature/authentication/screens/splash_screen.dart';
 import 'package:smartlogisticssystem/data/model/local_trip_response_model.dart';
 import 'package:smartlogisticssystem/feature/driver/driver_screens/driver_screen.dart';
@@ -47,6 +48,7 @@ import 'package:smartlogisticssystem/feature/customer/screens/customer_order_det
 import 'package:smartlogisticssystem/feature/customer/screens/customer_tracking_screen.dart';
 import 'package:smartlogisticssystem/feature/customer/screens/customer_profile_screen.dart';
 import 'package:smartlogisticssystem/feature/live_tracking/screens/live_tracking_map_page.dart';
+import 'package:smartlogisticssystem/feature/admin_ai/screens/admin_ai_assistant_page.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
@@ -65,6 +67,11 @@ final appRouter = GoRouter(
       path: '/mobile-login',
       pageBuilder: (context, state) =>
           const NoTransitionPage(child: MobileLoginScreen()),
+    ),
+    GoRoute(
+      path: '/role-select',
+      pageBuilder: (context, state) =>
+          const NoTransitionPage(child: RoleSelectScreen()),
     ),
 
     GoRoute(
@@ -380,6 +387,19 @@ final appRouter = GoRouter(
           pageBuilder: (context, state) =>
               const NoTransitionPage(child: LiveTrackingMapPage()),
         ),
+        GoRoute(
+          path: '/admin-ai-assistant',
+          redirect: (context, state) async {
+            final prefs = await SharedPreferences.getInstance();
+            final roleId = prefs.getInt('roleId');
+            if (roleId != 1) {
+              return '/dashboard';
+            }
+            return null;
+          },
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: AdminAiAssistantPage()),
+        ),
       ],
     ),
 
@@ -620,6 +640,7 @@ String _titleForPath(String path) {
     '/categories' => 'Danh mục',
     '/exception-reasons' => 'Lý do ngoại lệ',
     '/live-tracking' => 'Giám sát live',
+    '/admin-ai-assistant' => 'Trợ lý vận hành AI',
     '/users' => 'Quản lý nhân sự',
     '/zones' => 'Quản lý khu vực',
     '/vehicles' => 'Quản lý phương tiện',

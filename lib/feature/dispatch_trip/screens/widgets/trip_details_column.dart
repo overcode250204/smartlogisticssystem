@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:smartlogisticssystem/core/app_theme.dart';
 import 'package:smartlogisticssystem/data/model/linehaul_trip_model.dart';
 import 'package:smartlogisticssystem/data/model/local_trip_model.dart';
+import 'package:smartlogisticssystem/feature/dispatch_trip/services/driver_assignment_rules.dart';
 import 'package:smartlogisticssystem/data/model/order_model.dart';
 import 'package:smartlogisticssystem/data/model/pallet_model.dart';
 import 'package:smartlogisticssystem/feature/dispatch_trip/screens/dispatch_management_page.dart'; // For DraggedPalletItem
@@ -74,11 +75,12 @@ class TripDetailsColumn extends StatelessWidget {
 
     if (selectedTrip is LinehaulTripModel) {
       final trip = selectedTrip as LinehaulTripModel;
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildTripHeader(
-            '${trip.linehaultripCode ?? "N/A"}',
+      // Dữ liệu cũ có thể chứa phân công không hợp lệ (trùng driver / nhiều MAIN).
+      // Khi đó khoá nút XUẤT BẾN và hiển thị cảnh báo, không để crash.
+      final assignmentIssues =
+          validateLinehaulAssignment(trip.linehaulTripDriver);
+      final header = _buildTripHeader(
+            trip.linehaultripCode ?? "N/A",
             'LINEHAUL',
             trip.routeConfig?.routeName ?? 'N/A',
             trip.linehaulTripDriver?.isNotEmpty == true
@@ -112,60 +114,64 @@ class TripDetailsColumn extends StatelessWidget {
             onDelete: onDeleteLinehaul != null && trip.linehaulId != null
                 ? () => onDeleteLinehaul!(trip.linehaulId!)
                 : null,
-            onCanStart: onUpdateStatusToCanStart != null && trip.linehaulId != null
+            // Chặn xuất bến ở FE khi phân công không hợp lệ (backend vẫn chặn cuối).
+            onCanStart: assignmentIssues.isValid &&
+                    onUpdateStatusToCanStart != null &&
+                    trip.linehaulId != null
                 ? () => onUpdateStatusToCanStart!(trip.linehaulId!)
                 : null,
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: DragTarget<PalletModel>(
-              onAccept: (pallet) {
-                if (pallet.palletId != null && trip.linehaulId != null) {
-                  onAddPalletToLinehaul(trip.linehaulId!, pallet.palletId!);
-                }
-              },
-              builder: (context, candidateData, rejectedData) {
-                return Container(
-                  decoration: BoxDecoration(
-                    color: candidateData.isNotEmpty ? AppColors.primary.withOpacity(0.05) : Colors.transparent,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: candidateData.isNotEmpty ? AppColors.primary : Colors.transparent, width: 2),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.inventory_2_outlined, size: 20),
-                          const SizedBox(width: 8),
-                          Text('Danh sách Pallet trên xe (${trip.pallets?.length ?? 0})',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textPrimary)),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Expanded(
-                        child: ListView.builder(
-                          itemCount: trip.pallets?.length ?? 0,
-                          itemBuilder: (context, index) {
-                            final pallet = trip.pallets![index];
-                            return _buildLinehaulPalletCard(pallet);
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
+            assignmentIssues: assignmentIssues.issues,
+          );
+      final pallets = trip.pallets ?? const [];
+      return DragTarget<PalletModel>(
+        onAccept: (pallet) {
+          if (pallet.palletId != null && trip.linehaulId != null) {
+            onAddPalletToLinehaul(trip.linehaulId!, pallet.palletId!);
+          }
+        },
+        builder: (context, candidateData, rejectedData) {
+          return Container(
+            decoration: BoxDecoration(
+              color: candidateData.isNotEmpty ? AppColors.primary.withOpacity(0.05) : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: candidateData.isNotEmpty ? AppColors.primary : Colors.transparent, width: 2),
             ),
-          ),
-        ],
+            // Toàn bộ cột chi tiết cuộn được để không tràn khi nội dung header
+            // hoặc danh sách pallet dài hơn khoảng trống được cấp.
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              children: [
+                header,
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    const Icon(Icons.inventory_2_outlined, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text('Danh sách Pallet trên xe (${pallets.length})',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textPrimary)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (pallets.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: Text('Kéo pallet chờ xếp vào đây',
+                          style: TextStyle(color: AppColors.textSecondary)),
+                    ),
+                  )
+                else
+                  ...pallets.map(_buildLinehaulPalletCard),
+              ],
+            ),
+          );
+        },
       );
     } else {
       final trip = selectedTrip as LocalTripModel;
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildTripHeader(
+      final header = _buildTripHeader(
             trip.localTripCode ?? 'LM-${trip.localTripId ?? "000"}',
             'LAST-MILE',
             trip.hub?.name ?? 'N/A',
@@ -190,48 +196,44 @@ class TripDetailsColumn extends StatelessWidget {
             onEdit: onEditLocal,
             onCollapse: onCollapseLocal,
             vrpEstimatedMinutes: trip.vrpEstimatedMinutes,
-          ),
+          );
+      final details = trip.details ?? const [];
+      return ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        children: [
+          header,
           const SizedBox(height: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.inventory_2_outlined, size: 20),
-                    const SizedBox(width: 8),
-                    Text('Danh sách Đơn hàng (VRP Order)',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textPrimary)),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: trip.details?.length ?? 0,
-                    itemBuilder: (context, index) {
-                      final detail = trip.details![index];
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          border: Border.all(color: AppColors.border),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: AppColors.darkest,
-                            child: Text('${index + 1}', style: const TextStyle(color: AppColors.textPrimary)),
-                          ),
-                          title: Text(detail.order?.orderCode ?? 'Sản phẩm', style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text('${detail.order?.totalWeightKg ?? 0}kg • ${detail.order?.deliveryProvince ?? ""}'),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
+          Row(
+            children: [
+              const Icon(Icons.inventory_2_outlined, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('Danh sách Đơn hàng (VRP Order)',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textPrimary)),
+              ),
+            ],
           ),
+          const SizedBox(height: 12),
+          ...details.asMap().entries.map((entry) {
+            final index = entry.key;
+            final detail = entry.value;
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(color: AppColors.border),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: AppColors.darkest,
+                  child: Text('${index + 1}', style: const TextStyle(color: AppColors.textPrimary)),
+                ),
+                title: Text(detail.order?.orderCode ?? 'Sản phẩm', style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text('${detail.order?.totalWeightKg ?? 0}kg • ${detail.order?.deliveryProvince ?? ""}'),
+              ),
+            );
+          }),
         ],
       );
     }
@@ -249,17 +251,63 @@ class TripDetailsColumn extends StatelessWidget {
     VoidCallback? onCanStart,
     VoidCallback? onCollapse,
     int? vrpEstimatedMinutes,
+    List<String> assignmentIssues = const [],
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        if (assignmentIssues.isNotEmpty)
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.orange),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.warning_amber, color: Colors.orange, size: 18),
+                    SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Phân công tài xế không hợp lệ — không thể xuất bến. '
+                        'Vui lòng sửa lại phân công.',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+                for (final issue in assignmentIssues)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4, left: 24),
+                    child: Text('• $issue'),
+                  ),
+              ],
+            ),
+          ),
+        // Dùng Wrap để tiêu đề và các nút hành động xuống dòng thay vì tràn ngang
+        Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          alignment: WrapAlignment.spaceBetween,
+          spacing: 12,
+          runSpacing: 8,
           children: [
             Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                Flexible(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -271,7 +319,10 @@ class TripDetailsColumn extends StatelessWidget {
                 ),
               ],
             ),
-            Row(
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 4,
+              runSpacing: 4,
               children: [
                 if (onEdit != null)
                   IconButton(
@@ -314,26 +365,32 @@ class TripDetailsColumn extends StatelessWidget {
         const SizedBox(height: 8),
         Text(subtitle, style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
         const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _buildInfoBox(Icons.person_outline, driver, ''),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildInfoBox(Icons.local_shipping_outlined, 'Biển số xe', vehicle ?? 'Chưa phân công'),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildInfoBox(Icons.info_outline, 'Trạng thái', statusLabel),
-            ),
-            if (vrpEstimatedMinutes != null) ...[
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildInfoBox(Icons.timer_outlined, 'VRP Dự kiến', '$vrpEstimatedMinutes phút'),
-              ),
-            ],
-          ],
+        // Các ô thông tin tự xuống dòng khi cột chi tiết bị thu hẹp,
+        // tránh việc chữ bị bẻ theo từng ký tự và tràn chiều dọc.
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final boxes = <Widget>[
+              _buildInfoBox(Icons.person_outline, driver, ''),
+              _buildInfoBox(Icons.local_shipping_outlined, 'Biển số xe', vehicle ?? 'Chưa phân công'),
+              _buildInfoBox(Icons.info_outline, 'Trạng thái', statusLabel),
+              if (vrpEstimatedMinutes != null)
+                _buildInfoBox(Icons.timer_outlined, 'VRP Dự kiến', '$vrpEstimatedMinutes phút'),
+            ];
+            const spacing = 8.0;
+            const minBoxWidth = 200.0;
+            final maxWidth = constraints.maxWidth;
+            var perRow = ((maxWidth + spacing) / (minBoxWidth + spacing)).floor();
+            perRow = perRow.clamp(1, boxes.length);
+            final boxWidth = (maxWidth - spacing * (perRow - 1)) / perRow;
+
+            return Wrap(
+              spacing: spacing,
+              runSpacing: spacing,
+              children: boxes
+                  .map((b) => SizedBox(width: boxWidth, child: b))
+                  .toList(),
+            );
+          },
         ),
       ],
     );
@@ -365,9 +422,15 @@ class TripDetailsColumn extends StatelessWidget {
                 if (title is Widget)
                   title
                 else
-                  Text(title.toString(), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                  Text(title.toString(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
                 if (subtitle.isNotEmpty)
-                  Text(subtitle, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                  Text(subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
               ],
             ),
           ),
@@ -418,13 +481,20 @@ class TripDetailsColumn extends StatelessWidget {
           ),
           child: ExpansionTile(
             leading: const Icon(Icons.inventory_2, color: AppColors.textSecondary),
-            title: Text(pallet.palletCode ?? 'N/A', style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('${pallet.palletItems?.length ?? 0} kiện • ${pallet.totalWeightKg ?? 0}kg'),
-            shape: const Border(),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
+            title: Text(
+              pallet.palletCode ?? 'N/A',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            // Badge trạng thái nằm ở subtitle để không chiếm hết bề ngang của title
+            subtitle: Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                if (pallet.status != null) ...[
+                Text('${pallet.palletItems?.length ?? 0} kiện • ${pallet.totalWeightKg ?? 0}kg'),
+                if (pallet.status != null)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
@@ -440,8 +510,12 @@ class TripDetailsColumn extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                ],
+              ],
+            ),
+            shape: const Border(),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 if (pallet.status == 'CREATING') ...[
                   IconButton(
                     icon: const Icon(Icons.lock_open, size: 18, color: AppColors.primary),

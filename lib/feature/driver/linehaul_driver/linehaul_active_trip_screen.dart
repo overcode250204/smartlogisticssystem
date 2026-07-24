@@ -72,7 +72,7 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
       setState(() {
         _errorMessage = 'Lỗi tải chuyến đi hoạt động';
       });
-      print('Error fetching active trip: $e');
+      debugPrint('Error fetching active trip: $e');
     } finally {
       setState(() {
         _isLoading = false;
@@ -87,7 +87,7 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
     try {
       serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        print('Location services are disabled.');
+        debugPrint('Location services are disabled.');
         return;
       }
 
@@ -95,30 +95,48 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          print('Location permissions are denied');
+          debugPrint('Location permissions are denied');
           return;
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        print('Location permissions are permanently denied.');
+        debugPrint('Location permissions are permanently denied.');
         return;
       }
 
       final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       );
       setState(() {
         _currentPosition = position;
       });
     } catch (e) {
-      print('Error getting GPS location: $e');
+      debugPrint('Error getting GPS location: $e');
     }
+  }
+
+  int? _getActiveTripId() {
+    final value = _activeTrip?['linehaulId'] ?? _activeTrip?['id'];
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '');
   }
 
   Future<void> _handleDispatch() async {
     if (_activeTrip == null) return;
-    final tripId = _activeTrip!['id'];
+    final tripId = _getActiveTripId();
+    if (tripId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Khong tim thay ma chuyen linehaul hop le'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
 
     double lat = 0.0;
     double lng = 0.0;
@@ -131,6 +149,7 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
     } else {
       await _determinePosition();
       if (_currentPosition == null) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Không thể lấy tọa độ GPS hiện tại. Vui lòng thử lại hoặc bật Giả lập.')),
         );
@@ -177,7 +196,16 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
 
   Future<void> _handleFinish() async {
     if (_activeTrip == null) return;
-    final tripId = _activeTrip!['id'];
+    final tripId = _getActiveTripId();
+    if (tripId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Khong tim thay ma chuyen linehaul hop le'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
 
     double lat = 0.0;
     double lng = 0.0;
@@ -190,6 +218,7 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
     } else {
       await _determinePosition();
       if (_currentPosition == null) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Không thể lấy tọa độ GPS hiện tại. Vui lòng thử lại hoặc bật Giả lập.')),
         );
@@ -421,7 +450,7 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
             color: Colors.white,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.08),
+                color: Colors.black.withValues(alpha: 0.08),
                 blurRadius: 10,
                 offset: const Offset(0, -3),
               ),
@@ -521,7 +550,7 @@ class _LinehaulActiveTripScreenState extends State<LinehaulActiveTripScreen> {
                           _useMockLocation = val;
                         });
                       },
-                      activeColor: Colors.blueAccent,
+                      activeThumbColor: Colors.blueAccent,
                     ),
                   ],
                 ),

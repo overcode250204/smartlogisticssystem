@@ -6,6 +6,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:smartlogisticssystem/core/app_theme.dart';
 import 'package:smartlogisticssystem/widgets/dashboard_widgets.dart';
+import 'package:smartlogisticssystem/widgets/api_error_message.dart';
 import 'package:smartlogisticssystem/feature/trip_dashboard/models/trip_dashboard_models.dart';
 import 'package:smartlogisticssystem/feature/trip_dashboard/service/trip_dashboard_service.dart';
 
@@ -182,7 +183,7 @@ class _TripDashboardPageState extends State<TripDashboardPage> {
                         const Icon(Icons.error_outline, color: AppColors.danger, size: 56),
                         const SizedBox(height: 14),
                         Text(
-                          'Lỗi kết nối máy chủ: ${snapshot.error}',
+                          'Lỗi kết nối máy chủ: ${apiErrorMessage(snapshot.error!)}',
                           style: const TextStyle(color: AppColors.textSecondary, fontSize: 15),
                         ),
                         const SizedBox(height: 16),
