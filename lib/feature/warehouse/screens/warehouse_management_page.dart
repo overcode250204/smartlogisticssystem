@@ -66,7 +66,7 @@ class _WarehouseManagementPageState extends State<WarehouseManagementPage> {
         final List data = response.data;
         if (mounted) {
           setState(() {
-            _provinces = data.map((e) => e['name'].toString()).toList();
+            _provinces = data.map((e) => e['name'].toString()).toSet().toList();
             _isLoadingProvinces = false;
           });
         }
@@ -456,7 +456,8 @@ class _WarehouseFormDialogState extends State<_WarehouseFormDialog> {
     _longitudeController = TextEditingController(text: widget.warehouse?.longitude.toString() ?? '106.660172');
     _startDeliveryTimeController = TextEditingController(text: widget.warehouse?.startDeliveryTime ?? '');
     _type = widget.warehouse?.type ?? WarehouseType.CDC;
-    _selectedProvince = widget.warehouse?.province;
+    final province = widget.warehouse?.province;
+    _selectedProvince = (province == null || province.isEmpty) ? null : province;
 
     if (widget.warehouse != null) {
       _markerPosition = LatLng(widget.warehouse!.latitude, widget.warehouse!.longitude);
@@ -472,6 +473,16 @@ class _WarehouseFormDialogState extends State<_WarehouseFormDialog> {
     _startDeliveryTimeController.dispose();
     _mapController.dispose();
     super.dispose();
+  }
+
+  /// Danh sách tỉnh hiển thị: loại bỏ trùng lặp và luôn chứa tỉnh hiện tại của
+  /// kho (dữ liệu cũ có thể không khớp tên tỉnh trả về từ API).
+  List<String> get _provinceOptions {
+    final options = widget.provinces.toSet();
+    if (_selectedProvince != null && _selectedProvince!.isNotEmpty) {
+      options.add(_selectedProvince!);
+    }
+    return options.toList();
   }
 
   void _onMapTap(LatLng point) {
@@ -631,7 +642,7 @@ class _WarehouseFormDialogState extends State<_WarehouseFormDialog> {
                         decoration: const InputDecoration(
                           prefixIcon: Icon(Icons.map_outlined),
                         ),
-                        items: widget.provinces.map(
+                        items: _provinceOptions.map(
                           (prov) => DropdownMenuItem(
                             value: prov,
                             child: Text(prov),
